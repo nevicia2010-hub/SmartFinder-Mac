@@ -4,6 +4,8 @@
 "search.placeholder" = "搜索当前文件夹";
 
 "sidebar.home" = "主文件夹";
+"sidebar.favorites" = "个人收藏";
+"sidebar.volumes" = "磁盘";
 "sidebar.desktop" = "桌面";
 "sidebar.downloads" = "下载";
 "sidebar.documents" = "文稿";

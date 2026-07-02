@@ -4,6 +4,8 @@
 "search.placeholder" = "Buscar en la carpeta actual";
 
 "sidebar.home" = "Inicio";
+"sidebar.favorites" = "Favoritos";
+"sidebar.volumes" = "Volúmenes";
 "sidebar.desktop" = "Escritorio";
 "sidebar.downloads" = "Descargas";
 "sidebar.documents" = "Documentos";

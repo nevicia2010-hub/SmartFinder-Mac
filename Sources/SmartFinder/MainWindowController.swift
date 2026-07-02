@@ -1,7 +1,9 @@
 import AppKit
+import SmartFinderCore
 
 final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     private let gridController = FileGridViewController()
+    private let mountedVolumeProvider = MountedVolumeProvider()
     private let pathField = NSTextField(labelWithString: "")
     private let statusField = NSTextField(labelWithString: "")
     private let searchField = NSSearchField()
@@ -12,6 +14,12 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     private var sidebarURLs: [URL] = []
     private var history: [URL] = []
     private var historyIndex = -1
+
+    private struct SidebarLocation {
+        let name: String
+        let url: URL
+        let icon: NSImage
+    }
 
     init(startURL: URL) {
         let window = NSWindow(
@@ -83,7 +91,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
             sidebar.topAnchor.constraint(equalTo: body.topAnchor),
             sidebar.leadingAnchor.constraint(equalTo: body.leadingAnchor),
             sidebar.bottomAnchor.constraint(equalTo: body.bottomAnchor),
-            sidebar.widthAnchor.constraint(equalToConstant: 190),
+            sidebar.widthAnchor.constraint(equalToConstant: 210),
 
             gridController.view.topAnchor.constraint(equalTo: body.topAnchor),
             gridController.view.leadingAnchor.constraint(equalTo: sidebar.trailingAnchor),
@@ -116,27 +124,38 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     }
 
     private func makeSidebar() -> NSView {
-        let container = NSView()
-        container.wantsLayer = true
-        container.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        let container = NSVisualEffectView()
+        container.material = .sidebar
+        container.blendingMode = .withinWindow
+        container.state = .active
 
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 4
-        stack.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        stack.spacing = 2
+        stack.edgeInsets = NSEdgeInsets(top: 12, left: 10, bottom: 12, right: 10)
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        let locations = sidebarLocations()
-        sidebarURLs = locations.map(\.url)
+        sidebarURLs = []
 
-        for (index, location) in locations.enumerated() {
-            let button = NSButton(title: location.name, target: self, action: #selector(openSidebarLocation(_:)))
-            button.bezelStyle = .inline
-            button.alignment = .left
-            button.tag = index
-            button.widthAnchor.constraint(equalToConstant: 160).isActive = true
-            stack.addArrangedSubview(button)
+        addSidebarHeader(
+            L10n.string("sidebar.favorites", fallback: "Favorites"),
+            to: stack
+        )
+        for location in standardSidebarLocations() {
+            addSidebarButton(for: location, to: stack)
+        }
+
+        let mountedVolumes = mountedVolumeLocations()
+        if !mountedVolumes.isEmpty {
+            addSidebarSpacer(to: stack, height: 8)
+            addSidebarHeader(
+                L10n.string("sidebar.volumes", fallback: "Volumes"),
+                to: stack
+            )
+            for location in mountedVolumes {
+                addSidebarButton(for: location, to: stack)
+            }
         }
 
         container.addSubview(stack)
@@ -147,6 +166,45 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
             stack.bottomAnchor.constraint(lessThanOrEqualTo: container.bottomAnchor)
         ])
         return container
+    }
+
+    private func addSidebarHeader(_ title: String, to stack: NSStackView) {
+        let field = NSTextField(labelWithString: title.uppercased(with: Locale.current))
+        field.font = .systemFont(ofSize: 11, weight: .semibold)
+        field.textColor = .secondaryLabelColor
+        field.alignment = .left
+        field.translatesAutoresizingMaskIntoConstraints = false
+        field.widthAnchor.constraint(equalToConstant: 188).isActive = true
+        stack.addArrangedSubview(field)
+    }
+
+    private func addSidebarSpacer(to stack: NSStackView, height: CGFloat) {
+        let spacer = NSView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.heightAnchor.constraint(equalToConstant: height).isActive = true
+        spacer.widthAnchor.constraint(equalToConstant: 188).isActive = true
+        stack.addArrangedSubview(spacer)
+    }
+
+    private func addSidebarButton(for location: SidebarLocation, to stack: NSStackView) {
+        let index = sidebarURLs.count
+        sidebarURLs.append(location.url)
+
+        let button = NSButton(title: location.name, target: self, action: #selector(openSidebarLocation(_:)))
+        button.image = location.icon
+        button.imagePosition = .imageLeading
+        button.imageScaling = .scaleProportionallyDown
+        button.isBordered = false
+        button.bezelStyle = .regularSquare
+        button.alignment = .left
+        button.font = .systemFont(ofSize: 13)
+        button.lineBreakMode = .byTruncatingTail
+        button.tag = index
+        button.setButtonType(.momentaryChange)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.widthAnchor.constraint(equalToConstant: 188).isActive = true
+        button.heightAnchor.constraint(equalToConstant: 26).isActive = true
+        stack.addArrangedSubview(button)
     }
 
     private func makeStatusBar() -> NSView {
@@ -162,7 +220,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         return container
     }
 
-    private func sidebarLocations() -> [(name: String, url: URL)] {
+    private func standardSidebarLocations() -> [SidebarLocation] {
         let fileManager = FileManager.default
         let home = fileManager.homeDirectoryForCurrentUser
         func first(_ directory: FileManager.SearchPathDirectory) -> URL? {
@@ -170,12 +228,27 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         }
 
         return [
-            (L10n.string("sidebar.home", fallback: "Home"), home),
-            (L10n.string("sidebar.desktop", fallback: "Desktop"), first(.desktopDirectory) ?? home),
-            (L10n.string("sidebar.downloads", fallback: "Downloads"), first(.downloadsDirectory) ?? home),
-            (L10n.string("sidebar.documents", fallback: "Documents"), first(.documentDirectory) ?? home),
-            (L10n.string("sidebar.pictures", fallback: "Pictures"), first(.picturesDirectory) ?? home)
+            sidebarLocation(L10n.string("sidebar.home", fallback: "Home"), home, "house"),
+            sidebarLocation(L10n.string("sidebar.desktop", fallback: "Desktop"), first(.desktopDirectory) ?? home, "desktopcomputer"),
+            sidebarLocation(L10n.string("sidebar.downloads", fallback: "Downloads"), first(.downloadsDirectory) ?? home, "arrow.down.circle"),
+            sidebarLocation(L10n.string("sidebar.documents", fallback: "Documents"), first(.documentDirectory) ?? home, "doc.text"),
+            sidebarLocation(L10n.string("sidebar.pictures", fallback: "Pictures"), first(.picturesDirectory) ?? home, "photo")
         ]
+    }
+
+    private func mountedVolumeLocations() -> [SidebarLocation] {
+        mountedVolumeProvider.mountedVolumes().map { volume in
+            let icon = NSWorkspace.shared.icon(forFile: volume.url.path)
+            icon.size = NSSize(width: 18, height: 18)
+            return SidebarLocation(name: volume.name, url: volume.url, icon: icon)
+        }
+    }
+
+    private func sidebarLocation(_ name: String, _ url: URL, _ symbolName: String) -> SidebarLocation {
+        let icon = NSImage(systemSymbolName: symbolName, accessibilityDescription: name)
+            ?? NSWorkspace.shared.icon(forFile: url.path)
+        icon.size = NSSize(width: 18, height: 18)
+        return SidebarLocation(name: name, url: url, icon: icon)
     }
 
     private func navigate(to url: URL, recordHistory: Bool) {

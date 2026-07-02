@@ -4,6 +4,8 @@
 "search.placeholder" = "Rechercher dans le dossier actuel";
 
 "sidebar.home" = "Accueil";
+"sidebar.favorites" = "Favoris";
+"sidebar.volumes" = "Volumes";
 "sidebar.desktop" = "Bureau";
 "sidebar.downloads" = "Téléchargements";
 "sidebar.documents" = "Documents";

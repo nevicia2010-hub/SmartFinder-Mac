@@ -4,6 +4,8 @@
 "search.placeholder" = "현재 폴더 검색";
 
 "sidebar.home" = "홈";
+"sidebar.favorites" = "즐겨찾기";
+"sidebar.volumes" = "볼륨";
 "sidebar.desktop" = "데스크탑";
 "sidebar.downloads" = "다운로드";
 "sidebar.documents" = "문서";

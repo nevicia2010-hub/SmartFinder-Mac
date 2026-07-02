@@ -8,6 +8,7 @@ The first version opens a folder in a Finder-like icon grid:
 - PDF and office documents show system type icons instead of generated content thumbnails.
 - Folders show folder icons.
 - Unknown files show system type icons.
+- Mounted external volumes appear in the Finder-style sidebar.
 - The interface follows the system language for English, Simplified Chinese, Traditional Chinese, Japanese, Korean, German, French, Spanish, Italian, and Portuguese.
 - Double-click opens files or enters folders.
 - Space opens Quick Look for the current selection.
@@ -48,13 +49,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.1.3.dmg`
+- `dist/SmartFinder-0.1.4.dmg`
 
 The app is ad-hoc signed for local use. It is not Apple Developer ID signed or notarized, so macOS may show the standard warning the first time it is opened on another machine.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.1.3.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.1.4.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 

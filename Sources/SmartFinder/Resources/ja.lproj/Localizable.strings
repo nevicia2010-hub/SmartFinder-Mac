@@ -4,6 +4,8 @@
 "search.placeholder" = "現在のフォルダを検索";
 
 "sidebar.home" = "ホーム";
+"sidebar.favorites" = "よく使う項目";
+"sidebar.volumes" = "ボリューム";
 "sidebar.desktop" = "デスクトップ";
 "sidebar.downloads" = "ダウンロード";
 "sidebar.documents" = "書類";

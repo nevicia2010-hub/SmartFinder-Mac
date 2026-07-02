@@ -13,6 +13,22 @@ func category(_ path: String, isDirectory: Bool = false) -> FileCategory {
     FileClassifier.category(for: URL(fileURLWithPath: path), isDirectory: isDirectory)
 }
 
+let mountedVolumeLocations = MountedVolumeProvider.locations(from: [
+    URL(fileURLWithPath: "/"),
+    URL(fileURLWithPath: "/System/Volumes/VM"),
+    URL(fileURLWithPath: "/Volumes/CameraSSD"),
+    URL(fileURLWithPath: "/Volumes/Photo Archive")
+])
+
+expect(
+    mountedVolumeLocations.map(\.name) == ["CameraSSD", "Photo Archive"],
+    "mounted volumes should include browsable /Volumes entries only"
+)
+expect(
+    mountedVolumeLocations.map(\.url.path) == ["/Volumes/CameraSSD", "/Volumes/Photo Archive"],
+    "mounted volume URLs should preserve /Volumes paths"
+)
+
 expect(SmartFinderCoreBootstrap.isAvailable, "core module should load")
 expect(category("/tmp/photo.jpg") == .image, "jpg should be image")
 expect(category("/tmp/photo.HEIC") == .image, "HEIC should be image")
