@@ -51,6 +51,10 @@
 "menu.display.smallIcons" = "작은 아이콘";
 "menu.display.mediumIcons" = "중간 아이콘";
 "menu.display.largeIcons" = "큰 아이콘";
+"menu.display.hiddenItems" = "숨김 항목";
+"menu.display.fileExtensions" = "파일 확장자";
+"menu.display.itemCheckboxes" = "항목 체크상자";
+"menu.display.detailsPane" = "세부 정보 패널";
 "menu.tags.add" = "태그 추가...";
 "menu.tags.red" = "빨간색";
 "menu.tags.orange" = "주황색";
@@ -64,9 +68,13 @@
 "menu.quickLook" = "훑어보기";
 "menu.getInfo" = "정보 가져오기";
 "menu.newFolder" = "새 폴더";
+"menu.newTextFile" = "새 텍스트 파일";
+"menu.newMarkdownFile" = "새 Markdown 파일";
 "menu.rename" = "이름 변경";
 "menu.moveToTrash" = "휴지통으로 이동";
 "menu.copy" = "복사";
+"menu.copyTo" = "다음으로 복사...";
+"menu.moveTo" = "다음으로 이동...";
 "menu.copyPath" = "경로 복사";
 "menu.compress" = "압축";
 "menu.paste" = "붙여넣기";
@@ -89,5 +97,12 @@
 "dialog.tag.title" = "태그 추가";
 "dialog.tag.message" = "선택한 파일의 태그 이름을 입력하십시오.";
 "dialog.tag.defaultName" = "작업";
+"dialog.chooseFolder.prompt" = "선택";
+"dialog.chooseFolder.message" = "대상 폴더를 선택하십시오.";
 "dialog.ok" = "확인";
 "dialog.cancel" = "취소";
+
+"details.empty.title" = "선택 없음";
+"details.empty.subtitle" = "항목을 선택하면 세부 정보를 볼 수 있습니다.";
+"details.multiple.title" = "%d개 항목";
+"details.multiple.subtitle" = "다중 선택";

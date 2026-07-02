@@ -16,6 +16,9 @@ The first version opens a folder in a Finder-like icon grid:
 - The back/forward navigation control uses a larger SmartFinder-sized hit area without copying Finder pixel-for-pixel.
 - Back and forward arrows remain visible in gray when unavailable, then brighten when that direction becomes available.
 - Finder-like toolbar menus provide display presets, grouping/sorting, system sharing, real Finder color tags, and common file actions.
+- Windows Explorer-style convenience toggles are available for hidden items, file name extensions, and item selection checkboxes.
+- A lightweight details pane can show selected item metadata without generating document thumbnails.
+- The Actions menu includes Copy To, Move To, New Text File, and New Markdown File for common folder work.
 - The tag menu writes real Finder color labels instead of text-only tags; tagged folders use the matching folder icon color, while tagged files keep their system icons with a compact color indicator.
 - The window uses a Finder-like full-height sidebar, transparent titlebar, compact breadcrumb row, and neutral toolbar symbols.
 - Toolbar symbols now follow Finder-like availability states: enabled controls are bright, while unavailable controls are dimmed.
@@ -68,13 +71,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.5.6.dmg`
+- `dist/SmartFinder-0.6.0.dmg`
 
 The app is ad-hoc signed for local use. It is not Apple Developer ID signed or notarized, so macOS may show the standard warning the first time it is opened on another machine.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.5.6.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.6.0.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 
@@ -90,6 +93,7 @@ SmartFinder is intentionally selective about content thumbnails:
 - PDF, Office, audio, archive, code, and unknown files stay lightweight and readable with macOS system icons plus type/size subtitles.
 - This keeps large mixed folders easier to scan without asking macOS to render every document page.
 - List view uses metadata and system icons only; it does not run the thumbnail pipeline.
+- The details pane uses file metadata and system icons, so it does not start a heavy preview database.
 - Toolbar menus are created on demand and operate on the current folder or current selection; SmartFinder does not run a full-disk indexer or pre-render document thumbnails.
 
 ## Localizations

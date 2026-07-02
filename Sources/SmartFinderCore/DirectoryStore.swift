@@ -1,9 +1,17 @@
 import Foundation
 
+public struct DirectoryLoadOptions: Equatable, Hashable, Sendable {
+    public let includesHiddenItems: Bool
+
+    public init(includesHiddenItems: Bool = false) {
+        self.includesHiddenItems = includesHiddenItems
+    }
+}
+
 public final class DirectoryStore {
     public init() {}
 
-    public func loadItems(in folderURL: URL) throws -> [FileItem] {
+    public func loadItems(in folderURL: URL, options: DirectoryLoadOptions = DirectoryLoadOptions()) throws -> [FileItem] {
         let keys: Set<URLResourceKey> = [
             .isDirectoryKey,
             .isHiddenKey,
@@ -16,7 +24,7 @@ public final class DirectoryStore {
         let urls = try FileManager.default.contentsOfDirectory(
             at: folderURL,
             includingPropertiesForKeys: Array(keys),
-            options: [.skipsHiddenFiles]
+            options: options.includesHiddenItems ? [] : [.skipsHiddenFiles]
         )
 
         return try urls.map { url in

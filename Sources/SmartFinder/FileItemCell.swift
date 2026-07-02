@@ -5,11 +5,13 @@ final class FileItemCell: NSCollectionViewItem {
     static let reuseIdentifier = NSUserInterfaceItemIdentifier("FileItemCell")
 
     private let iconView = NSImageView()
+    private let selectionCheckbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     private let tagIndicator = NSView()
     private let titleField = NSTextField(labelWithString: "")
     private let subtitleField = NSTextField(labelWithString: "")
     private var iconWidthConstraint: NSLayoutConstraint?
     private var iconHeightConstraint: NSLayoutConstraint?
+    private var onCheckboxToggle: ((URL) -> Void)?
 
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 128, height: 150))
@@ -18,6 +20,11 @@ final class FileItemCell: NSCollectionViewItem {
 
         iconView.imageScaling = .scaleProportionallyUpOrDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        selectionCheckbox.target = self
+        selectionCheckbox.action = #selector(toggleSelectionCheckbox)
+        selectionCheckbox.translatesAutoresizingMaskIntoConstraints = false
+        selectionCheckbox.isHidden = true
 
         tagIndicator.wantsLayer = true
         tagIndicator.layer?.cornerRadius = 4
@@ -38,6 +45,7 @@ final class FileItemCell: NSCollectionViewItem {
         subtitleField.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(iconView)
+        view.addSubview(selectionCheckbox)
         view.addSubview(tagIndicator)
         view.addSubview(titleField)
         view.addSubview(subtitleField)
@@ -50,6 +58,11 @@ final class FileItemCell: NSCollectionViewItem {
             iconView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             iconWidthConstraint!,
             iconHeightConstraint!,
+
+            selectionCheckbox.leadingAnchor.constraint(equalTo: iconView.leadingAnchor, constant: -2),
+            selectionCheckbox.topAnchor.constraint(equalTo: iconView.topAnchor, constant: -2),
+            selectionCheckbox.widthAnchor.constraint(equalToConstant: 18),
+            selectionCheckbox.heightAnchor.constraint(equalToConstant: 18),
 
             tagIndicator.widthAnchor.constraint(equalToConstant: 8),
             tagIndicator.heightAnchor.constraint(equalToConstant: 8),
@@ -69,6 +82,9 @@ final class FileItemCell: NSCollectionViewItem {
     override func prepareForReuse() {
         super.prepareForReuse()
         iconView.image = nil
+        selectionCheckbox.isHidden = true
+        selectionCheckbox.state = .off
+        onCheckboxToggle = nil
         tagIndicator.isHidden = true
         tagIndicator.layer?.backgroundColor = nil
         titleField.stringValue = ""
@@ -81,6 +97,7 @@ final class FileItemCell: NSCollectionViewItem {
             view.layer?.backgroundColor = isSelected
                 ? NSColor.selectedControlColor.withAlphaComponent(0.24).cgColor
                 : NSColor.clear.cgColor
+            selectionCheckbox.state = isSelected ? .on : .off
         }
     }
 
@@ -90,15 +107,27 @@ final class FileItemCell: NSCollectionViewItem {
         image: NSImage,
         representedURL: URL,
         iconSize: CGFloat,
-        finderLabelNumber: Int
+        finderLabelNumber: Int,
+        showsSelectionCheckbox: Bool,
+        onCheckboxToggle: ((URL) -> Void)?
     ) {
         representedObject = representedURL
         iconWidthConstraint?.constant = iconSize
         iconHeightConstraint?.constant = iconSize
         iconView.image = image
+        selectionCheckbox.isHidden = !showsSelectionCheckbox
+        selectionCheckbox.state = isSelected ? .on : .off
+        self.onCheckboxToggle = onCheckboxToggle
         updateTagIndicator(finderLabelNumber: finderLabelNumber)
         titleField.stringValue = name
         subtitleField.stringValue = subtitle
+    }
+
+    @objc private func toggleSelectionCheckbox() {
+        guard let url = representedObject as? URL else {
+            return
+        }
+        onCheckboxToggle?(url)
     }
 
     private func updateTagIndicator(finderLabelNumber: Int) {

@@ -51,6 +51,10 @@
 "menu.display.smallIcons" = "小圖示";
 "menu.display.mediumIcons" = "中圖示";
 "menu.display.largeIcons" = "大圖示";
+"menu.display.hiddenItems" = "隱藏項目";
+"menu.display.fileExtensions" = "檔案副檔名";
+"menu.display.itemCheckboxes" = "項目核取方塊";
+"menu.display.detailsPane" = "詳細資訊窗格";
 "menu.tags.add" = "加入標籤...";
 "menu.tags.red" = "紅色";
 "menu.tags.orange" = "橙色";
@@ -64,9 +68,13 @@
 "menu.quickLook" = "快速查看";
 "menu.getInfo" = "顯示簡介";
 "menu.newFolder" = "新增資料夾";
+"menu.newTextFile" = "新增文字檔";
+"menu.newMarkdownFile" = "新增 Markdown 檔";
 "menu.rename" = "重新命名";
 "menu.moveToTrash" = "移到垃圾桶";
 "menu.copy" = "拷貝";
+"menu.copyTo" = "拷貝到...";
+"menu.moveTo" = "移動到...";
 "menu.copyPath" = "拷貝路徑";
 "menu.compress" = "壓縮";
 "menu.paste" = "貼上";
@@ -89,5 +97,12 @@
 "dialog.tag.title" = "加入標籤";
 "dialog.tag.message" = "輸入所選檔案的標籤名稱。";
 "dialog.tag.defaultName" = "工作";
+"dialog.chooseFolder.prompt" = "選擇";
+"dialog.chooseFolder.message" = "選擇目的地資料夾。";
 "dialog.ok" = "好";
 "dialog.cancel" = "取消";
+
+"details.empty.title" = "未選取";
+"details.empty.subtitle" = "選取項目以檢視詳細資訊。";
+"details.multiple.title" = "%d 個項目";
+"details.multiple.subtitle" = "多重選取";

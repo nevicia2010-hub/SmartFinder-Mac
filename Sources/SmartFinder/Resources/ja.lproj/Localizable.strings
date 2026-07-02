@@ -51,6 +51,10 @@
 "menu.display.smallIcons" = "小さいアイコン";
 "menu.display.mediumIcons" = "中アイコン";
 "menu.display.largeIcons" = "大きいアイコン";
+"menu.display.hiddenItems" = "隠し項目";
+"menu.display.fileExtensions" = "ファイル拡張子";
+"menu.display.itemCheckboxes" = "項目チェックボックス";
+"menu.display.detailsPane" = "詳細パネル";
 "menu.tags.add" = "タグを追加...";
 "menu.tags.red" = "赤";
 "menu.tags.orange" = "オレンジ";
@@ -64,9 +68,13 @@
 "menu.quickLook" = "クイックルック";
 "menu.getInfo" = "情報を見る";
 "menu.newFolder" = "新規フォルダ";
+"menu.newTextFile" = "新規テキストファイル";
+"menu.newMarkdownFile" = "新規Markdownファイル";
 "menu.rename" = "名前を変更";
 "menu.moveToTrash" = "ゴミ箱に入れる";
 "menu.copy" = "コピー";
+"menu.copyTo" = "コピー先...";
+"menu.moveTo" = "移動先...";
 "menu.copyPath" = "パスをコピー";
 "menu.compress" = "圧縮";
 "menu.paste" = "ペースト";
@@ -89,5 +97,12 @@
 "dialog.tag.title" = "タグを追加";
 "dialog.tag.message" = "選択したファイルのタグ名を入力してください。";
 "dialog.tag.defaultName" = "仕事";
+"dialog.chooseFolder.prompt" = "選択";
+"dialog.chooseFolder.message" = "保存先フォルダを選択してください。";
 "dialog.ok" = "OK";
 "dialog.cancel" = "キャンセル";
+
+"details.empty.title" = "未選択";
+"details.empty.subtitle" = "項目を選択すると詳細を表示します。";
+"details.multiple.title" = "%d項目";
+"details.multiple.subtitle" = "複数選択";

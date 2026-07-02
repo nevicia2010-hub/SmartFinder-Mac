@@ -51,6 +51,10 @@
 "menu.display.smallIcons" = "小图标";
 "menu.display.mediumIcons" = "中图标";
 "menu.display.largeIcons" = "大图标";
+"menu.display.hiddenItems" = "隐藏项目";
+"menu.display.fileExtensions" = "文件扩展名";
+"menu.display.itemCheckboxes" = "项目复选框";
+"menu.display.detailsPane" = "详细信息窗格";
 "menu.tags.add" = "添加标签...";
 "menu.tags.red" = "红色";
 "menu.tags.orange" = "橙色";
@@ -64,9 +68,13 @@
 "menu.quickLook" = "快速查看";
 "menu.getInfo" = "显示简介";
 "menu.newFolder" = "新建文件夹";
+"menu.newTextFile" = "新建文本文件";
+"menu.newMarkdownFile" = "新建 Markdown 文件";
 "menu.rename" = "重命名";
 "menu.moveToTrash" = "移到废纸篓";
 "menu.copy" = "复制";
+"menu.copyTo" = "复制到...";
+"menu.moveTo" = "移动到...";
 "menu.copyPath" = "复制路径";
 "menu.compress" = "压缩";
 "menu.paste" = "粘贴";
@@ -89,5 +97,12 @@
 "dialog.tag.title" = "添加标签";
 "dialog.tag.message" = "为所选文件输入标签名称。";
 "dialog.tag.defaultName" = "工作";
+"dialog.chooseFolder.prompt" = "选择";
+"dialog.chooseFolder.message" = "选择目标文件夹。";
 "dialog.ok" = "确定";
 "dialog.cancel" = "取消";
+
+"details.empty.title" = "未选择";
+"details.empty.subtitle" = "选择一个项目查看详细信息。";
+"details.multiple.title" = "%d 个项目";
+"details.multiple.subtitle" = "多选";

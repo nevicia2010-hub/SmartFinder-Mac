@@ -31,6 +31,12 @@ expect(
     FileManager.default.fileExists(atPath: createdFolder.path),
     "createFolder should create the requested folder"
 )
+let createdTextFile = try fileOperations.createFile(named: "notes.txt", contents: "hello", in: operationsDirectory)
+let createdText = try String(contentsOf: createdTextFile, encoding: .utf8)
+expect(
+    createdText == "hello",
+    "createFile should write a new text file with the requested contents"
+)
 
 let renamedFolder = try fileOperations.rename(createdFolder, to: "Shoot Renamed")
 expect(
@@ -54,6 +60,40 @@ expect(
 expect(
     fileOperations.uniqueDestinationURL(for: sourceFile, in: operationsDirectory).lastPathComponent == "photo copy 3.jpg",
     "uniqueDestinationURL should skip existing copy names"
+)
+let moveTargetDirectory = try fileOperations.createFolder(named: "Move Target", in: operationsDirectory)
+let movableFile = operationsDirectory.appendingPathComponent("move-me.txt")
+try "move-me".write(to: movableFile, atomically: true, encoding: .utf8)
+let movedFile = try fileOperations.move(movableFile, toDirectory: moveTargetDirectory)
+expect(movedFile.deletingLastPathComponent() == moveTargetDirectory, "move to directory should place the item in the target folder")
+expect(!FileManager.default.fileExists(atPath: movableFile.path), "move to directory should remove the source item")
+expect(FileManager.default.fileExists(atPath: movedFile.path), "move to directory should create the destination item")
+
+let visibleDirectoryFile = operationsDirectory.appendingPathComponent("visible.txt")
+let hiddenDirectoryFile = operationsDirectory.appendingPathComponent(".hidden.txt")
+try "visible".write(to: visibleDirectoryFile, atomically: true, encoding: .utf8)
+try "hidden".write(to: hiddenDirectoryFile, atomically: true, encoding: .utf8)
+let defaultDirectoryNames = try DirectoryStore().loadItems(in: operationsDirectory).map(\.name)
+expect(defaultDirectoryNames.contains("visible.txt"), "directory loading should include visible files")
+expect(!defaultDirectoryNames.contains(".hidden.txt"), "directory loading should hide dotfiles by default")
+let hiddenDirectoryNames = try DirectoryStore().loadItems(
+    in: operationsDirectory,
+    options: DirectoryLoadOptions(includesHiddenItems: true)
+).map(\.name)
+expect(hiddenDirectoryNames.contains(".hidden.txt"), "directory loading should show hidden files when requested")
+let displayNameFile = FileItem(
+    url: URL(fileURLWithPath: "/tmp/report.final.pdf"),
+    name: "report.final.pdf",
+    isDirectory: false,
+    category: .document
+)
+expect(
+    FileNameDisplayPolicy.displayName(for: displayNameFile, showsFileExtensions: false) == "report.final",
+    "file name display should hide the final extension when requested"
+)
+expect(
+    FileNameDisplayPolicy.displayName(for: displayNameFile, showsFileExtensions: true) == "report.final.pdf",
+    "file name display should keep extensions when requested"
 )
 
 let mountedVolumeLocations = MountedVolumeProvider.locations(from: [

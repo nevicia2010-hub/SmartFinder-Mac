@@ -78,6 +78,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private let backForwardControl = NSSegmentedControl()
     private let breadcrumbStack = NSStackView()
     private let toolbarTitleField = NSTextField(labelWithString: "")
+    private let detailsPane = DetailsPaneView()
     private lazy var shareButton = toolbarIconButton(
         symbolName: "square.and.arrow.up",
         fallbackTitle: L10n.string("toolbar.share", fallback: "Share"),
@@ -101,7 +102,9 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private var currentViewMode: FileViewMode = .icon
     private var activeSharingPicker: NSSharingServicePicker?
     private var toolbarTopConstraint: NSLayoutConstraint?
+    private var detailsPaneWidthConstraint: NSLayoutConstraint?
     private weak var sidebarStack: NSStackView?
+    private var detailsPaneVisible = false
 
     private struct SidebarLocation {
         let name: String
@@ -145,6 +148,9 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             self?.statusField.stringValue = status
             self?.updateSelectionToolbarButtons()
         }
+        gridController.onSelectionChange = { [weak self] items in
+            self?.detailsPane.update(selection: items)
+        }
 
         let contentView = NSView()
         contentView.translatesAutoresizingMaskIntoConstraints = false
@@ -161,6 +167,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         rightPane.translatesAutoresizingMaskIntoConstraints = false
         sidebar.translatesAutoresizingMaskIntoConstraints = false
         gridController.view.translatesAutoresizingMaskIntoConstraints = false
+        detailsPane.translatesAutoresizingMaskIntoConstraints = false
         statusBar.translatesAutoresizingMaskIntoConstraints = false
 
         contentView.addSubview(sidebar)
@@ -168,10 +175,14 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         rightPane.addSubview(toolbar)
         rightPane.addSubview(breadcrumbBar)
         rightPane.addSubview(gridController.view)
+        rightPane.addSubview(detailsPane)
         rightPane.addSubview(statusBar)
 
         let toolbarTopConstraint = toolbar.topAnchor.constraint(equalTo: rightPane.topAnchor)
         self.toolbarTopConstraint = toolbarTopConstraint
+        let detailsPaneWidthConstraint = detailsPane.widthAnchor.constraint(equalToConstant: 0)
+        self.detailsPaneWidthConstraint = detailsPaneWidthConstraint
+        detailsPane.isHidden = true
 
         NSLayoutConstraint.activate([
             sidebar.topAnchor.constraint(equalTo: contentView.topAnchor),
@@ -201,8 +212,13 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
 
             gridController.view.topAnchor.constraint(equalTo: breadcrumbBar.bottomAnchor),
             gridController.view.leadingAnchor.constraint(equalTo: rightPane.leadingAnchor),
-            gridController.view.trailingAnchor.constraint(equalTo: rightPane.trailingAnchor),
-            gridController.view.bottomAnchor.constraint(equalTo: statusBar.topAnchor)
+            gridController.view.trailingAnchor.constraint(equalTo: detailsPane.leadingAnchor),
+            gridController.view.bottomAnchor.constraint(equalTo: statusBar.topAnchor),
+
+            detailsPane.topAnchor.constraint(equalTo: breadcrumbBar.bottomAnchor),
+            detailsPane.trailingAnchor.constraint(equalTo: rightPane.trailingAnchor),
+            detailsPane.bottomAnchor.constraint(equalTo: statusBar.topAnchor),
+            detailsPaneWidthConstraint
         ])
     }
 
@@ -812,6 +828,31 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         menu.addItem(menuItem("menu.display.smallIcons", fallback: "Small Icons", action: #selector(useSmallIcons)))
         menu.addItem(menuItem("menu.display.mediumIcons", fallback: "Medium Icons", action: #selector(useMediumIcons)))
         menu.addItem(menuItem("menu.display.largeIcons", fallback: "Large Icons", action: #selector(useLargeIcons)))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(menuItem(
+            "menu.display.hiddenItems",
+            fallback: "Hidden Items",
+            action: #selector(toggleHiddenItems),
+            state: gridController.includesHiddenItemsEnabled() ? .on : .off
+        ))
+        menu.addItem(menuItem(
+            "menu.display.fileExtensions",
+            fallback: "File Name Extensions",
+            action: #selector(toggleFileExtensions),
+            state: gridController.showsFileExtensionsEnabled() ? .on : .off
+        ))
+        menu.addItem(menuItem(
+            "menu.display.itemCheckboxes",
+            fallback: "Item Checkboxes",
+            action: #selector(toggleItemCheckboxes),
+            state: gridController.showsSelectionCheckboxesEnabled() ? .on : .off
+        ))
+        menu.addItem(menuItem(
+            "menu.display.detailsPane",
+            fallback: "Details Pane",
+            action: #selector(toggleDetailsPane),
+            state: detailsPaneVisible ? .on : .off
+        ))
         popUp(menu, from: sender)
     }
 
@@ -848,10 +889,14 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         menu.addItem(menuItem("menu.getInfo", fallback: "Get Info", action: #selector(getInfoFromToolbar), enabled: hasSelection))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.newFolder", fallback: "New Folder", action: #selector(createFolder), enabled: canPaste))
+        menu.addItem(menuItem("menu.newTextFile", fallback: "New Text File", action: #selector(createTextFileFromToolbar), enabled: canPaste))
+        menu.addItem(menuItem("menu.newMarkdownFile", fallback: "New Markdown File", action: #selector(createMarkdownFileFromToolbar), enabled: canPaste))
         menu.addItem(menuItem("menu.rename", fallback: "Rename", action: #selector(renameSelectionFromToolbar), enabled: gridController.selectedItemCount() == 1))
         menu.addItem(menuItem("menu.moveToTrash", fallback: "Move to Trash", action: #selector(moveSelectionToTrashFromToolbar), enabled: hasSelection))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.copy", fallback: "Copy", action: #selector(copySelectionFromToolbar), enabled: hasSelection))
+        menu.addItem(menuItem("menu.copyTo", fallback: "Copy To...", action: #selector(copySelectionToFolderFromToolbar), enabled: hasSelection))
+        menu.addItem(menuItem("menu.moveTo", fallback: "Move To...", action: #selector(moveSelectionToFolderFromToolbar), enabled: hasSelection))
         menu.addItem(menuItem("menu.copyPath", fallback: "Copy Path", action: #selector(copyPathFromToolbar), enabled: hasSelection))
         menu.addItem(menuItem("menu.compress", fallback: "Compress", action: #selector(compressSelectionFromToolbar), enabled: hasSelection))
         menu.addItem(menuItem("menu.paste", fallback: "Paste", action: #selector(pasteIntoFolderFromToolbar), enabled: canPaste))
@@ -898,6 +943,29 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private func setViewMode(_ mode: FileViewMode) {
         currentViewMode = mode
         gridController.setViewMode(mode)
+    }
+
+    @objc private func toggleHiddenItems() {
+        gridController.setIncludesHiddenItems(!gridController.includesHiddenItemsEnabled())
+    }
+
+    @objc private func toggleFileExtensions() {
+        gridController.setShowsFileExtensions(!gridController.showsFileExtensionsEnabled())
+    }
+
+    @objc private func toggleItemCheckboxes() {
+        gridController.setShowsSelectionCheckboxes(!gridController.showsSelectionCheckboxesEnabled())
+    }
+
+    @objc private func toggleDetailsPane() {
+        setDetailsPaneVisible(!detailsPaneVisible)
+    }
+
+    private func setDetailsPaneVisible(_ visible: Bool) {
+        detailsPaneVisible = visible
+        detailsPane.isHidden = !visible
+        detailsPaneWidthConstraint?.constant = visible ? 260 : 0
+        window?.contentView?.layoutSubtreeIfNeeded()
     }
 
     @objc private func sortByName() {
@@ -980,6 +1048,20 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         gridController.moveSelectedToTrash()
     }
 
+    @objc private func copySelectionToFolderFromToolbar() {
+        guard let targetURL = chooseDestinationFolder() else {
+            return
+        }
+        gridController.copySelection(toDirectory: targetURL)
+    }
+
+    @objc private func moveSelectionToFolderFromToolbar() {
+        guard let targetURL = chooseDestinationFolder() else {
+            return
+        }
+        gridController.moveSelection(toDirectory: targetURL)
+    }
+
     @objc private func copySelectionFromToolbar() {
         gridController.copySelectionToPasteboard()
     }
@@ -998,6 +1080,30 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
 
     @objc private func pasteIntoFolderFromToolbar() {
         gridController.pasteIntoCurrentFolder()
+    }
+
+    @objc private func createTextFileFromToolbar() {
+        gridController.createTextFile(named: uniqueTimestampedName(prefix: "Untitled", extensionPart: "txt"))
+    }
+
+    @objc private func createMarkdownFileFromToolbar() {
+        gridController.createTextFile(named: uniqueTimestampedName(prefix: "Untitled", extensionPart: "md"), contents: "# Notes\n")
+    }
+
+    private func chooseDestinationFolder() -> URL? {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = L10n.string("dialog.chooseFolder.prompt", fallback: "Choose")
+        panel.message = L10n.string("dialog.chooseFolder.message", fallback: "Choose a destination folder.")
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+
+    private func uniqueTimestampedName(prefix: String, extensionPart: String) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return "\(prefix)-\(formatter.string(from: Date())).\(extensionPart)"
     }
 
     @objc private func openPathFromField() {

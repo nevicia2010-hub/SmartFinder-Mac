@@ -51,6 +51,10 @@
 "menu.display.smallIcons" = "Kleine Symbole";
 "menu.display.mediumIcons" = "Mittlere Symbole";
 "menu.display.largeIcons" = "Große Symbole";
+"menu.display.hiddenItems" = "Versteckte Objekte";
+"menu.display.fileExtensions" = "Dateinamenerweiterungen";
+"menu.display.itemCheckboxes" = "Objekt-Auswahlfelder";
+"menu.display.detailsPane" = "Detailbereich";
 "menu.tags.add" = "Tag hinzufügen...";
 "menu.tags.red" = "Rot";
 "menu.tags.orange" = "Orange";
@@ -64,9 +68,13 @@
 "menu.quickLook" = "Übersicht";
 "menu.getInfo" = "Informationen";
 "menu.newFolder" = "Neuer Ordner";
+"menu.newTextFile" = "Neue Textdatei";
+"menu.newMarkdownFile" = "Neue Markdown-Datei";
 "menu.rename" = "Umbenennen";
 "menu.moveToTrash" = "In den Papierkorb legen";
 "menu.copy" = "Kopieren";
+"menu.copyTo" = "Kopieren nach...";
+"menu.moveTo" = "Bewegen nach...";
 "menu.copyPath" = "Pfad kopieren";
 "menu.compress" = "Komprimieren";
 "menu.paste" = "Einfügen";
@@ -89,5 +97,12 @@
 "dialog.tag.title" = "Tag hinzufügen";
 "dialog.tag.message" = "Geben Sie einen Tag-Namen für die ausgewählten Dateien ein.";
 "dialog.tag.defaultName" = "Arbeit";
+"dialog.chooseFolder.prompt" = "Auswählen";
+"dialog.chooseFolder.message" = "Zielordner auswählen.";
 "dialog.ok" = "OK";
 "dialog.cancel" = "Abbrechen";
+
+"details.empty.title" = "Keine Auswahl";
+"details.empty.subtitle" = "Wählen Sie ein Objekt aus, um Details anzuzeigen.";
+"details.multiple.title" = "%d Objekte";
+"details.multiple.subtitle" = "Mehrfachauswahl";

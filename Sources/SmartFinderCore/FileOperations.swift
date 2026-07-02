@@ -29,6 +29,13 @@ public final class FileOperations {
     }
 
     @discardableResult
+    public func createFile(named name: String, contents: String = "", in directoryURL: URL) throws -> URL {
+        let destinationURL = directoryURL.appendingPathComponent(name, isDirectory: false)
+        try contents.write(to: destinationURL, atomically: true, encoding: .utf8)
+        return destinationURL
+    }
+
+    @discardableResult
     public func rename(_ url: URL, to newName: String) throws -> URL {
         let destinationURL = url.deletingLastPathComponent().appendingPathComponent(newName)
         try fileManager.moveItem(at: url, to: destinationURL)
@@ -39,6 +46,13 @@ public final class FileOperations {
     public func copy(_ sourceURL: URL, toDirectory directoryURL: URL) throws -> URL {
         let destinationURL = uniqueDestinationURL(for: sourceURL, in: directoryURL)
         try fileManager.copyItem(at: sourceURL, to: destinationURL)
+        return destinationURL
+    }
+
+    @discardableResult
+    public func move(_ sourceURL: URL, toDirectory directoryURL: URL) throws -> URL {
+        let destinationURL = uniqueDestinationURL(for: sourceURL, in: directoryURL)
+        try fileManager.moveItem(at: sourceURL, to: destinationURL)
         return destinationURL
     }
 

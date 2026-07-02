@@ -164,6 +164,7 @@ final class SmartTableView: NSTableView {
 final class FileGridViewController: NSViewController, NSCollectionViewDataSource, NSCollectionViewDelegate, NSCollectionViewDelegateFlowLayout, NSTableViewDataSource, NSTableViewDelegate, SmartCollectionViewKeyDelegate {
     var onOpenFolder: ((URL) -> Void)?
     var onStatusChange: ((String) -> Void)?
+    var onSelectionChange: (([FileItem]) -> Void)?
 
     private let directoryStore = DirectoryStore()
     private let fileOperations = FileOperations()
@@ -183,6 +184,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private var iconSize: CGFloat = 96
     private var sortMode: FileSortMode = .name
     private var viewMode: FileViewMode = .icon
+    private var includesHiddenItems = false
+    private var showsFileExtensions = true
+    private var showsSelectionCheckboxes = false
 
     override func loadView() {
         let layout = NSCollectionViewFlowLayout()
@@ -246,18 +250,20 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         tableView.rowHeight = 30
         tableView.intercellSpacing = NSSize(width: 0, height: 2)
 
+        addTableColumn(identifier: "selectionCheckbox", titleKey: "", fallback: "", width: 34)
         addTableColumn(identifier: "name", titleKey: "toolbar.sort.name", fallback: "Name", width: 320)
         addTableColumn(identifier: "type", titleKey: "toolbar.sort.type", fallback: "Type", width: 110)
         addTableColumn(identifier: "size", titleKey: "toolbar.sort.size", fallback: "Size", width: 100)
         addTableColumn(identifier: "modified", titleKey: "toolbar.sort.modified", fallback: "Modified", width: 160)
+        updateTableCheckboxColumnVisibility()
     }
 
     private func addTableColumn(identifier: String, titleKey: String, fallback: String, width: CGFloat) {
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(identifier))
-        column.title = L10n.string(titleKey, fallback: fallback)
+        column.title = titleKey.isEmpty ? fallback : L10n.string(titleKey, fallback: fallback)
         column.width = width
-        column.minWidth = 70
-        column.resizingMask = .userResizingMask
+        column.minWidth = identifier == "selectionCheckbox" ? width : 70
+        column.resizingMask = identifier == "selectionCheckbox" ? [] : .userResizingMask
         tableView.addTableColumn(column)
     }
 
@@ -268,8 +274,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         reloadViews()
         updateStatus(prefix: L10n.string("status.loading", fallback: "Loading"))
 
+        let options = DirectoryLoadOptions(includesHiddenItems: includesHiddenItems)
         DispatchQueue.global(qos: .userInitiated).async { [directoryStore] in
-            let result = Result { try directoryStore.loadItems(in: folderURL) }
+            let result = Result { try directoryStore.loadItems(in: folderURL, options: options) }
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.currentFolderURL == folderURL else {
                     return
@@ -331,6 +338,43 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         updateStatus()
     }
 
+    func setIncludesHiddenItems(_ includesHiddenItems: Bool) {
+        guard self.includesHiddenItems != includesHiddenItems else {
+            return
+        }
+        self.includesHiddenItems = includesHiddenItems
+        refresh()
+    }
+
+    func includesHiddenItemsEnabled() -> Bool {
+        includesHiddenItems
+    }
+
+    func setShowsFileExtensions(_ showsFileExtensions: Bool) {
+        guard self.showsFileExtensions != showsFileExtensions else {
+            return
+        }
+        self.showsFileExtensions = showsFileExtensions
+        reloadViews()
+    }
+
+    func showsFileExtensionsEnabled() -> Bool {
+        showsFileExtensions
+    }
+
+    func setShowsSelectionCheckboxes(_ showsSelectionCheckboxes: Bool) {
+        guard self.showsSelectionCheckboxes != showsSelectionCheckboxes else {
+            return
+        }
+        self.showsSelectionCheckboxes = showsSelectionCheckboxes
+        updateTableCheckboxColumnVisibility()
+        reloadViews()
+    }
+
+    func showsSelectionCheckboxesEnabled() -> Bool {
+        showsSelectionCheckboxes
+    }
+
     func currentViewMode() -> FileViewMode {
         viewMode
     }
@@ -352,6 +396,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
+        if showsSelectionCheckboxes {
+            tableView.reloadData()
+        }
         updateStatus()
     }
 
@@ -363,9 +410,15 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
         let item = displayedItems[row]
         switch tableColumn.identifier.rawValue {
+        case "selectionCheckbox":
+            let button = NSButton(checkboxWithTitle: "", target: self, action: #selector(toggleSelectionCheckboxFromTable(_:)))
+            button.tag = row
+            button.state = tableView.selectedRowIndexes.contains(row) ? .on : .off
+            button.alignment = .center
+            return button
         case "name":
             let cell = tableCell(identifier: "nameCell", includesIcon: true)
-            cell.textField?.stringValue = item.name
+            cell.textField?.stringValue = displayName(for: item)
             let icon = NSWorkspace.shared.icon(forFile: item.url.path)
             icon.size = NSSize(width: 18, height: 18)
             cell.imageView?.image = icon
@@ -400,26 +453,35 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
         let item = displayedItems[indexPath.item]
         let cell = collectionView.makeItem(withIdentifier: FileItemCell.reuseIdentifier, for: indexPath) as! FileItemCell
+        let displayName = displayName(for: item)
         let subtitle = subtitle(for: item)
         let fallbackIcon = visualIconProvider.icon(for: item, size: iconSize)
 
         if let cached = thumbnailPipeline.cachedThumbnail(for: item.url) {
             cell.configure(
-                name: item.name,
+                name: displayName,
                 subtitle: subtitle,
                 image: cached,
                 representedURL: item.url,
                 iconSize: iconSize,
-                finderLabelNumber: item.finderLabelNumber
+                finderLabelNumber: item.finderLabelNumber,
+                showsSelectionCheckbox: showsSelectionCheckboxes,
+                onCheckboxToggle: { [weak self] url in
+                    self?.toggleSelection(for: url)
+                }
             )
         } else {
             cell.configure(
-                name: item.name,
+                name: displayName,
                 subtitle: subtitle,
                 image: fallbackIcon,
                 representedURL: item.url,
                 iconSize: iconSize,
-                finderLabelNumber: item.finderLabelNumber
+                finderLabelNumber: item.finderLabelNumber,
+                showsSelectionCheckbox: showsSelectionCheckboxes,
+                onCheckboxToggle: { [weak self] url in
+                    self?.toggleSelection(for: url)
+                }
             )
         }
 
@@ -431,12 +493,16 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                     return
                 }
                 cell?.configure(
-                    name: item.name,
+                    name: displayName,
                     subtitle: subtitle,
                     image: image,
                     representedURL: item.url,
                     iconSize: self.iconSize,
-                    finderLabelNumber: item.finderLabelNumber
+                    finderLabelNumber: item.finderLabelNumber,
+                    showsSelectionCheckbox: self.showsSelectionCheckboxes,
+                    onCheckboxToggle: { [weak self] url in
+                        self?.toggleSelection(for: url)
+                    }
                 )
             }
         }
@@ -445,10 +511,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
+        collectionView.reloadItems(at: indexPaths)
         updateStatus()
     }
 
     func collectionView(_ collectionView: NSCollectionView, didDeselectItemsAt indexPaths: Set<IndexPath>) {
+        collectionView.reloadItems(at: indexPaths)
         updateStatus()
     }
 
@@ -604,6 +672,53 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(paths.joined(separator: "\n"), forType: .string)
+    }
+
+    func copySelection(toDirectory directoryURL: URL) {
+        let urls = selectedItems().map(\.url)
+        guard !urls.isEmpty else {
+            return
+        }
+
+        do {
+            for url in urls {
+                try fileOperations.copy(url, toDirectory: directoryURL)
+            }
+            if currentFolderURL?.standardizedFileURL == directoryURL.standardizedFileURL {
+                refresh()
+            }
+        } catch {
+            showOperationError(error)
+        }
+    }
+
+    func moveSelection(toDirectory directoryURL: URL) {
+        let urls = selectedItems().map(\.url)
+        guard !urls.isEmpty else {
+            return
+        }
+
+        do {
+            for url in urls {
+                try fileOperations.move(url, toDirectory: directoryURL)
+            }
+            refresh()
+        } catch {
+            showOperationError(error)
+        }
+    }
+
+    func createTextFile(named name: String, contents: String = "") {
+        guard let currentFolderURL else {
+            return
+        }
+
+        do {
+            try fileOperations.createFile(named: name, contents: contents, in: currentFolderURL)
+            refresh()
+        } catch {
+            showOperationError(error)
+        }
     }
 
     func compressSelection() {
@@ -833,6 +948,46 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
     }
 
+    private func toggleSelection(for url: URL) {
+        guard let index = displayedItems.firstIndex(where: { $0.url == url }) else {
+            return
+        }
+
+        switch viewMode {
+        case .icon:
+            let indexPath = IndexPath(item: index, section: 0)
+            if collectionView.selectionIndexPaths.contains(indexPath) {
+                collectionView.deselectItems(at: [indexPath])
+            } else {
+                collectionView.selectItems(at: [indexPath], scrollPosition: [])
+            }
+        case .list:
+            if tableView.selectedRowIndexes.contains(index) {
+                tableView.deselectRow(index)
+            } else {
+                tableView.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: true)
+            }
+        }
+        updateStatus()
+    }
+
+    @objc private func toggleSelectionCheckboxFromTable(_ sender: NSButton) {
+        guard displayedItems.indices.contains(sender.tag) else {
+            return
+        }
+
+        if sender.state == .on {
+            tableView.selectRowIndexes(IndexSet(integer: sender.tag), byExtendingSelection: true)
+        } else {
+            tableView.deselectRow(sender.tag)
+        }
+        updateStatus()
+    }
+
+    private func updateTableCheckboxColumnVisibility() {
+        tableView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier("selectionCheckbox"))?.isHidden = !showsSelectionCheckboxes
+    }
+
     private func contextMenu() -> NSMenu {
         let menu = NSMenu()
         let hasSelection = !selectedItems().isEmpty
@@ -1033,6 +1188,10 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         return "\(label) - \(byteFormatter.string(fromByteCount: byteSize))"
     }
 
+    private func displayName(for item: FileItem) -> String {
+        FileNameDisplayPolicy.displayName(for: item, showsFileExtensions: showsFileExtensions)
+    }
+
     private func typeLabel(for item: FileItem) -> String {
         let ext = item.url.pathExtension.uppercased()
         if !item.isDirectory && !ext.isEmpty {
@@ -1089,5 +1248,6 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         } else {
             onStatusChange?("\(itemText)\(selectionText)")
         }
+        onSelectionChange?(selectedItems())
     }
 }
