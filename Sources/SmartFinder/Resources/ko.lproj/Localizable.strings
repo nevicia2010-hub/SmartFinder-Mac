@@ -13,6 +13,7 @@
 "sidebar.eject" = "추출";
 
 "status.loading" = "불러오는 중";
+"status.compressing" = "압축 중";
 "status.items.one" = "%d개 항목";
 "status.items.other" = "%d개 항목";
 "status.selected" = ", %d개 선택됨";
@@ -46,6 +47,7 @@
 "category.file" = "파일";
 
 "menu.display.iconView" = "아이콘 보기";
+"menu.display.listView" = "목록 보기";
 "menu.display.smallIcons" = "작은 아이콘";
 "menu.display.mediumIcons" = "중간 아이콘";
 "menu.display.largeIcons" = "큰 아이콘";
@@ -53,18 +55,30 @@
 "menu.tags.clear" = "태그 지우기";
 "menu.open" = "열기";
 "menu.quickLook" = "훑어보기";
+"menu.getInfo" = "정보 가져오기";
 "menu.newFolder" = "새 폴더";
 "menu.rename" = "이름 변경";
 "menu.moveToTrash" = "휴지통으로 이동";
 "menu.copy" = "복사";
+"menu.copyPath" = "경로 복사";
+"menu.compress" = "압축";
 "menu.paste" = "붙여넣기";
 "menu.revealInFinder" = "Finder에서 보기";
+
+"info.selection" = "선택: %d개 항목";
+"info.kind" = "종류";
+"info.size" = "크기";
+"info.extension" = "확장자";
+"info.where" = "위치";
+"info.created" = "생성일";
+"info.modified" = "수정일";
 
 "dialog.newFolder.title" = "새 폴더";
 "dialog.newFolder.message" = "새 폴더 이름을 입력하십시오.";
 "dialog.newFolder.defaultName" = "무제 폴더";
 "dialog.rename.title" = "이름 변경";
 "dialog.rename.message" = "새 이름을 입력하십시오.";
+"dialog.info.multipleTitle" = "%d개 항목";
 "dialog.tag.title" = "태그 추가";
 "dialog.tag.message" = "선택한 파일의 태그 이름을 입력하십시오.";
 "dialog.tag.defaultName" = "작업";

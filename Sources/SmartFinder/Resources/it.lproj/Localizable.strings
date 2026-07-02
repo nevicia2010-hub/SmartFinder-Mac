@@ -13,6 +13,7 @@
 "sidebar.eject" = "Espelli";
 
 "status.loading" = "Caricamento";
+"status.compressing" = "Compressione";
 "status.items.one" = "%d elemento";
 "status.items.other" = "%d elementi";
 "status.selected" = ", %d selezionati";
@@ -46,6 +47,7 @@
 "category.file" = "File";
 
 "menu.display.iconView" = "Vista icone";
+"menu.display.listView" = "Vista elenco";
 "menu.display.smallIcons" = "Icone piccole";
 "menu.display.mediumIcons" = "Icone medie";
 "menu.display.largeIcons" = "Icone grandi";
@@ -53,18 +55,30 @@
 "menu.tags.clear" = "Cancella tag";
 "menu.open" = "Apri";
 "menu.quickLook" = "Visualizzazione rapida";
+"menu.getInfo" = "Ottieni informazioni";
 "menu.newFolder" = "Nuova cartella";
 "menu.rename" = "Rinomina";
 "menu.moveToTrash" = "Sposta nel Cestino";
 "menu.copy" = "Copia";
+"menu.copyPath" = "Copia percorso";
+"menu.compress" = "Comprimi";
 "menu.paste" = "Incolla";
 "menu.revealInFinder" = "Mostra nel Finder";
+
+"info.selection" = "Selezione: %d elementi";
+"info.kind" = "Tipo";
+"info.size" = "Dimensione";
+"info.extension" = "Estensione";
+"info.where" = "Posizione";
+"info.created" = "Creato";
+"info.modified" = "Modificato";
 
 "dialog.newFolder.title" = "Nuova cartella";
 "dialog.newFolder.message" = "Inserisci un nome per la nuova cartella.";
 "dialog.newFolder.defaultName" = "Cartella senza nome";
 "dialog.rename.title" = "Rinomina";
 "dialog.rename.message" = "Inserisci un nuovo nome.";
+"dialog.info.multipleTitle" = "%d elementi";
 "dialog.tag.title" = "Aggiungi tag";
 "dialog.tag.message" = "Inserisci un nome tag per i file selezionati.";
 "dialog.tag.defaultName" = "Lavoro";

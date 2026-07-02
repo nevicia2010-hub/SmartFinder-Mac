@@ -10,6 +10,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     private let iconSizeSlider = NSSlider(value: 96, minValue: 64, maxValue: 180, target: nil, action: nil)
     private let fileTagStore = FileTagStore()
     private let backForwardControl = NSSegmentedControl()
+    private let breadcrumbStack = NSStackView()
     private lazy var upButton = toolbarIconButton(
         symbolName: "chevron.up",
         fallbackTitle: L10n.string("button.up", fallback: "Up"),
@@ -17,8 +18,10 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     )
 
     private var sidebarURLs: [URL] = []
+    private var breadcrumbURLs: [URL] = []
     private var navigationHistory = NavigationHistory()
     private var currentSortMode: FileSortMode = .name
+    private var currentViewMode: FileViewMode = .icon
     private var activeSharingPicker: NSSharingServicePicker?
     private weak var sidebarStack: NSStackView?
 
@@ -64,17 +67,20 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         window.contentView = contentView
 
         let toolbar = makeToolbar()
+        let breadcrumbBar = makeBreadcrumbBar()
         let body = NSView()
         let sidebar = makeSidebar()
         let statusBar = makeStatusBar()
 
         toolbar.translatesAutoresizingMaskIntoConstraints = false
+        breadcrumbBar.translatesAutoresizingMaskIntoConstraints = false
         body.translatesAutoresizingMaskIntoConstraints = false
         sidebar.translatesAutoresizingMaskIntoConstraints = false
         gridController.view.translatesAutoresizingMaskIntoConstraints = false
         statusBar.translatesAutoresizingMaskIntoConstraints = false
 
         contentView.addSubview(toolbar)
+        contentView.addSubview(breadcrumbBar)
         contentView.addSubview(body)
         contentView.addSubview(statusBar)
         body.addSubview(sidebar)
@@ -86,7 +92,12 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
             toolbar.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             toolbar.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.height)),
 
-            body.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
+            breadcrumbBar.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
+            breadcrumbBar.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            breadcrumbBar.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            breadcrumbBar.heightAnchor.constraint(equalToConstant: 34),
+
+            body.topAnchor.constraint(equalTo: breadcrumbBar.bottomAnchor),
             body.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             body.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             body.bottomAnchor.constraint(equalTo: statusBar.topAnchor),
@@ -193,6 +204,28 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         searchField.widthAnchor.constraint(equalToConstant: 220).isActive = true
         searchField.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.buttonHeight)).isActive = true
         return stack
+    }
+
+    private func makeBreadcrumbBar() -> NSView {
+        let container = NSVisualEffectView()
+        container.material = .contentBackground
+        container.blendingMode = .withinWindow
+        container.state = .active
+
+        breadcrumbStack.orientation = .horizontal
+        breadcrumbStack.alignment = .centerY
+        breadcrumbStack.spacing = 2
+        breadcrumbStack.edgeInsets = NSEdgeInsets(top: 4, left: 14, bottom: 4, right: 14)
+        breadcrumbStack.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(breadcrumbStack)
+        NSLayoutConstraint.activate([
+            breadcrumbStack.topAnchor.constraint(equalTo: container.topAnchor),
+            breadcrumbStack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            breadcrumbStack.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor),
+            breadcrumbStack.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        return container
     }
 
     private func configureBackForwardControl() {
@@ -454,10 +487,42 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
             navigationHistory.record(url)
         }
         pathField.stringValue = url.path
+        updateBreadcrumbs(for: url)
         searchField.stringValue = ""
         gridController.applyFilter("")
         gridController.load(folderURL: url)
         updateNavigationButtons()
+    }
+
+    private func updateBreadcrumbs(for url: URL) {
+        for view in breadcrumbStack.arrangedSubviews {
+            breadcrumbStack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+
+        let components = PathBreadcrumb.components(for: url)
+        breadcrumbURLs = components.map(\.url)
+
+        for (index, component) in components.enumerated() {
+            if index > 0 {
+                let separator = NSTextField(labelWithString: ">")
+                separator.font = .systemFont(ofSize: 12, weight: .regular)
+                separator.textColor = .tertiaryLabelColor
+                breadcrumbStack.addArrangedSubview(separator)
+            }
+
+            let button = NSButton(title: component.title, target: self, action: #selector(openBreadcrumb(_:)))
+            button.bezelStyle = .inline
+            button.isBordered = false
+            button.font = .systemFont(ofSize: 12)
+            button.lineBreakMode = .byTruncatingMiddle
+            button.alignment = .center
+            button.tag = index
+            button.translatesAutoresizingMaskIntoConstraints = false
+            button.heightAnchor.constraint(equalToConstant: 24).isActive = true
+            button.widthAnchor.constraint(lessThanOrEqualToConstant: 150).isActive = true
+            breadcrumbStack.addArrangedSubview(button)
+        }
     }
 
     private func updateNavigationButtons() {
@@ -501,10 +566,18 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
 
     @objc private func showDisplayMenu(_ sender: NSButton) {
         let menu = NSMenu()
-        let iconViewItem = NSMenuItem(title: L10n.string("menu.display.iconView", fallback: "Icon View"), action: nil, keyEquivalent: "")
-        iconViewItem.state = .on
-        iconViewItem.isEnabled = false
-        menu.addItem(iconViewItem)
+        menu.addItem(menuItem(
+            "menu.display.iconView",
+            fallback: "Icon View",
+            action: #selector(useIconView),
+            state: currentViewMode == .icon ? .on : .off
+        ))
+        menu.addItem(menuItem(
+            "menu.display.listView",
+            fallback: "List View",
+            action: #selector(useListView),
+            state: currentViewMode == .list ? .on : .off
+        ))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.display.smallIcons", fallback: "Small Icons", action: #selector(useSmallIcons)))
         menu.addItem(menuItem("menu.display.mediumIcons", fallback: "Medium Icons", action: #selector(useMediumIcons)))
@@ -535,12 +608,15 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         let menu = NSMenu()
         menu.addItem(menuItem("menu.open", fallback: "Open", action: #selector(openSelectionFromToolbar), enabled: hasSelection))
         menu.addItem(menuItem("menu.quickLook", fallback: "Quick Look", action: #selector(quickLookSelectionFromToolbar), enabled: hasSelection))
+        menu.addItem(menuItem("menu.getInfo", fallback: "Get Info", action: #selector(getInfoFromToolbar), enabled: hasSelection))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.newFolder", fallback: "New Folder", action: #selector(createFolder), enabled: canPaste))
         menu.addItem(menuItem("menu.rename", fallback: "Rename", action: #selector(renameSelectionFromToolbar), enabled: gridController.selectedItemCount() == 1))
         menu.addItem(menuItem("menu.moveToTrash", fallback: "Move to Trash", action: #selector(moveSelectionToTrashFromToolbar), enabled: hasSelection))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.copy", fallback: "Copy", action: #selector(copySelectionFromToolbar), enabled: hasSelection))
+        menu.addItem(menuItem("menu.copyPath", fallback: "Copy Path", action: #selector(copyPathFromToolbar), enabled: hasSelection))
+        menu.addItem(menuItem("menu.compress", fallback: "Compress", action: #selector(compressSelectionFromToolbar), enabled: hasSelection))
         menu.addItem(menuItem("menu.paste", fallback: "Paste", action: #selector(pasteIntoFolderFromToolbar), enabled: canPaste))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.revealInFinder", fallback: "Reveal in Finder", action: #selector(revealInFinder), enabled: hasSelection || canPaste))
@@ -569,9 +645,22 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         setIconSizePreset(144)
     }
 
+    @objc private func useIconView() {
+        setViewMode(.icon)
+    }
+
+    @objc private func useListView() {
+        setViewMode(.list)
+    }
+
     private func setIconSizePreset(_ size: Double) {
         iconSizeSlider.doubleValue = size
         gridController.setIconSize(CGFloat(size))
+    }
+
+    private func setViewMode(_ mode: FileViewMode) {
+        currentViewMode = mode
+        gridController.setViewMode(mode)
     }
 
     @objc private func sortByName() {
@@ -682,6 +771,18 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         gridController.copySelectionToPasteboard()
     }
 
+    @objc private func copyPathFromToolbar() {
+        gridController.copySelectedPathsToPasteboard()
+    }
+
+    @objc private func compressSelectionFromToolbar() {
+        gridController.compressSelection()
+    }
+
+    @objc private func getInfoFromToolbar() {
+        gridController.showInfoForSelection()
+    }
+
     @objc private func pasteIntoFolderFromToolbar() {
         gridController.pasteIntoCurrentFolder()
     }
@@ -732,6 +833,13 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
             return
         }
         navigate(to: sidebarURLs[sender.tag], recordHistory: true)
+    }
+
+    @objc private func openBreadcrumb(_ sender: NSButton) {
+        guard breadcrumbURLs.indices.contains(sender.tag) else {
+            return
+        }
+        navigate(to: breadcrumbURLs[sender.tag], recordHistory: true)
     }
 
     @objc private func ejectSidebarVolume(_ sender: NSButton) {

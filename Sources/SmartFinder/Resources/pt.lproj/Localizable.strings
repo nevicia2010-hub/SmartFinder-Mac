@@ -13,6 +13,7 @@
 "sidebar.eject" = "Ejetar";
 
 "status.loading" = "A carregar";
+"status.compressing" = "A compactar";
 "status.items.one" = "%d item";
 "status.items.other" = "%d itens";
 "status.selected" = ", %d selecionados";
@@ -46,6 +47,7 @@
 "category.file" = "Arquivo";
 
 "menu.display.iconView" = "Visualização por ícones";
+"menu.display.listView" = "Visualização por lista";
 "menu.display.smallIcons" = "Ícones pequenos";
 "menu.display.mediumIcons" = "Ícones médios";
 "menu.display.largeIcons" = "Ícones grandes";
@@ -53,18 +55,30 @@
 "menu.tags.clear" = "Limpar etiquetas";
 "menu.open" = "Abrir";
 "menu.quickLook" = "Vista rápida";
+"menu.getInfo" = "Obter informações";
 "menu.newFolder" = "Nova pasta";
 "menu.rename" = "Mudar nome";
 "menu.moveToTrash" = "Mover para o Lixo";
 "menu.copy" = "Copiar";
+"menu.copyPath" = "Copiar caminho";
+"menu.compress" = "Compactar";
 "menu.paste" = "Colar";
 "menu.revealInFinder" = "Mostrar no Finder";
+
+"info.selection" = "Seleção: %d itens";
+"info.kind" = "Tipo";
+"info.size" = "Tamanho";
+"info.extension" = "Extensão";
+"info.where" = "Local";
+"info.created" = "Criado";
+"info.modified" = "Modificado";
 
 "dialog.newFolder.title" = "Nova pasta";
 "dialog.newFolder.message" = "Introduza um nome para a nova pasta.";
 "dialog.newFolder.defaultName" = "Pasta sem título";
 "dialog.rename.title" = "Mudar nome";
 "dialog.rename.message" = "Introduza um novo nome.";
+"dialog.info.multipleTitle" = "%d itens";
 "dialog.tag.title" = "Adicionar etiqueta";
 "dialog.tag.message" = "Digite um nome de etiqueta para os arquivos selecionados.";
 "dialog.tag.defaultName" = "Trabalho";

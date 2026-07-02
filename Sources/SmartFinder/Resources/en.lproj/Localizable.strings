@@ -13,6 +13,7 @@
 "sidebar.eject" = "Eject";
 
 "status.loading" = "Loading";
+"status.compressing" = "Compressing";
 "status.items.one" = "%d item";
 "status.items.other" = "%d items";
 "status.selected" = ", %d selected";
@@ -46,6 +47,7 @@
 "category.file" = "File";
 
 "menu.display.iconView" = "Icon View";
+"menu.display.listView" = "List View";
 "menu.display.smallIcons" = "Small Icons";
 "menu.display.mediumIcons" = "Medium Icons";
 "menu.display.largeIcons" = "Large Icons";
@@ -53,18 +55,30 @@
 "menu.tags.clear" = "Clear Tags";
 "menu.open" = "Open";
 "menu.quickLook" = "Quick Look";
+"menu.getInfo" = "Get Info";
 "menu.newFolder" = "New Folder";
 "menu.rename" = "Rename";
 "menu.moveToTrash" = "Move to Trash";
 "menu.copy" = "Copy";
+"menu.copyPath" = "Copy Path";
+"menu.compress" = "Compress";
 "menu.paste" = "Paste";
 "menu.revealInFinder" = "Reveal in Finder";
+
+"info.selection" = "Selection: %d items";
+"info.kind" = "Kind";
+"info.size" = "Size";
+"info.extension" = "Extension";
+"info.where" = "Where";
+"info.created" = "Created";
+"info.modified" = "Modified";
 
 "dialog.newFolder.title" = "New Folder";
 "dialog.newFolder.message" = "Enter a name for the new folder.";
 "dialog.newFolder.defaultName" = "Untitled Folder";
 "dialog.rename.title" = "Rename";
 "dialog.rename.message" = "Enter a new name.";
+"dialog.info.multipleTitle" = "%d Items";
 "dialog.tag.title" = "Add Tag";
 "dialog.tag.message" = "Enter a tag name for the selected files.";
 "dialog.tag.defaultName" = "Work";

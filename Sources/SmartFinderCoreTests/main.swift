@@ -76,6 +76,38 @@ expect(
     "mounted /Volumes sidebar entries should expose eject affordances"
 )
 
+let breadcrumbURL = URL(fileURLWithPath: "/Users/bingwang/Pictures/RAW", isDirectory: true)
+let breadcrumbComponents = PathBreadcrumb.components(for: breadcrumbURL)
+expect(
+    breadcrumbComponents.map(\.url.path) == ["/", "/Users", "/Users/bingwang", "/Users/bingwang/Pictures", "/Users/bingwang/Pictures/RAW"],
+    "path breadcrumb should expose cumulative parent URLs"
+)
+expect(
+    breadcrumbComponents.map(\.title) == ["/", "Users", "bingwang", "Pictures", "RAW"],
+    "path breadcrumb should expose readable component titles"
+)
+
+let infoFile = operationsDirectory.appendingPathComponent("info.pdf")
+try "pdf-data".write(to: infoFile, atomically: true, encoding: .utf8)
+let fileInfo = try FileInfoProvider().info(for: infoFile)
+expect(fileInfo.name == "info.pdf", "file info should expose display name")
+expect(fileInfo.fileExtension == "pdf", "file info should expose file extension")
+expect(fileInfo.category == .document, "file info should classify documents")
+expect(fileInfo.byteSize == 8, "file info should include byte size")
+expect(!fileInfo.isDirectory, "file info should distinguish regular files")
+
+let archiveSource = operationsDirectory.appendingPathComponent("archive-source.txt")
+try "archive-me".write(to: archiveSource, atomically: true, encoding: .utf8)
+let archiveURL = try fileOperations.compress([archiveSource], in: operationsDirectory)
+expect(archiveURL.pathExtension == "zip", "compress should create a zip archive")
+expect(FileManager.default.fileExists(atPath: archiveURL.path), "compress should write the archive to disk")
+let secondArchiveURL = try fileOperations.compress([archiveSource], in: operationsDirectory)
+expect(secondArchiveURL.lastPathComponent != archiveURL.lastPathComponent, "compress should avoid overwriting an existing archive")
+let dashedArchiveSource = operationsDirectory.appendingPathComponent("-dash.txt")
+try "dash".write(to: dashedArchiveSource, atomically: true, encoding: .utf8)
+let dashedArchiveURL = try fileOperations.compress([dashedArchiveSource], in: operationsDirectory)
+expect(FileManager.default.fileExists(atPath: dashedArchiveURL.path), "compress should handle names that begin with a dash")
+
 let tagStore = FileTagStore()
 let taggedFile = operationsDirectory.appendingPathComponent("tagged.txt")
 try "tag-me".write(to: taggedFile, atomically: true, encoding: .utf8)

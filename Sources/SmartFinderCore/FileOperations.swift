@@ -1,5 +1,19 @@
 import Foundation
 
+public enum FileOperationError: Error, LocalizedError {
+    case emptyCompressionSelection
+    case compressionFailed(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .emptyCompressionSelection:
+            return "No files were selected for compression."
+        case .compressionFailed(let message):
+            return message.isEmpty ? "Compression failed." : message
+        }
+    }
+}
+
 public final class FileOperations {
     private let fileManager: FileManager
 
@@ -28,6 +42,34 @@ public final class FileOperations {
         return destinationURL
     }
 
+    @discardableResult
+    public func compress(_ sourceURLs: [URL], in directoryURL: URL) throws -> URL {
+        guard !sourceURLs.isEmpty else {
+            throw FileOperationError.emptyCompressionSelection
+        }
+
+        let archiveURL = uniqueArchiveURL(for: sourceURLs, in: directoryURL)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+        process.currentDirectoryURL = directoryURL
+        process.arguments = ["-qry", archiveURL.path, "--"] + sourceURLs.map(\.lastPathComponent)
+
+        let errorPipe = Pipe()
+        process.standardError = errorPipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
+            let message = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            throw FileOperationError.compressionFailed(message)
+        }
+
+        return archiveURL
+    }
+
     public func uniqueDestinationURL(for sourceURL: URL, in directoryURL: URL) -> URL {
         let extensionPart = sourceURL.pathExtension
         let baseName = sourceURL.deletingPathExtension().lastPathComponent
@@ -39,6 +81,28 @@ public final class FileOperations {
             index += 1
         }
 
+        return candidate
+    }
+
+    public func uniqueArchiveURL(for sourceURLs: [URL], in directoryURL: URL) -> URL {
+        let baseName: String
+        if sourceURLs.count == 1 {
+            let source = sourceURLs[0]
+            if source.pathExtension.isEmpty {
+                baseName = source.lastPathComponent
+            } else {
+                baseName = source.deletingPathExtension().lastPathComponent
+            }
+        } else {
+            baseName = "Archive"
+        }
+
+        var candidate = directoryURL.appendingPathComponent("\(baseName).zip")
+        var index = 2
+        while fileManager.fileExists(atPath: candidate.path) {
+            candidate = directoryURL.appendingPathComponent("\(baseName) \(index).zip")
+            index += 1
+        }
         return candidate
     }
 

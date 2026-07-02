@@ -13,6 +13,7 @@
 "sidebar.eject" = "推出";
 
 "status.loading" = "正在载入";
+"status.compressing" = "正在压缩";
 "status.items.one" = "%d 个项目";
 "status.items.other" = "%d 个项目";
 "status.selected" = "，已选择 %d 项";
@@ -46,6 +47,7 @@
 "category.file" = "文件";
 
 "menu.display.iconView" = "图标视图";
+"menu.display.listView" = "列表视图";
 "menu.display.smallIcons" = "小图标";
 "menu.display.mediumIcons" = "中图标";
 "menu.display.largeIcons" = "大图标";
@@ -53,18 +55,30 @@
 "menu.tags.clear" = "清除标签";
 "menu.open" = "打开";
 "menu.quickLook" = "快速查看";
+"menu.getInfo" = "显示简介";
 "menu.newFolder" = "新建文件夹";
 "menu.rename" = "重命名";
 "menu.moveToTrash" = "移到废纸篓";
 "menu.copy" = "复制";
+"menu.copyPath" = "复制路径";
+"menu.compress" = "压缩";
 "menu.paste" = "粘贴";
 "menu.revealInFinder" = "在 Finder 中显示";
+
+"info.selection" = "已选择：%d 项";
+"info.kind" = "类型";
+"info.size" = "大小";
+"info.extension" = "扩展名";
+"info.where" = "位置";
+"info.created" = "创建时间";
+"info.modified" = "修改时间";
 
 "dialog.newFolder.title" = "新建文件夹";
 "dialog.newFolder.message" = "输入新文件夹名称。";
 "dialog.newFolder.defaultName" = "未命名文件夹";
 "dialog.rename.title" = "重命名";
 "dialog.rename.message" = "输入新名称。";
+"dialog.info.multipleTitle" = "%d 个项目";
 "dialog.tag.title" = "添加标签";
 "dialog.tag.message" = "为所选文件输入标签名称。";
 "dialog.tag.defaultName" = "工作";

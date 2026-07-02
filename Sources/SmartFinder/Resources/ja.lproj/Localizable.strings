@@ -13,6 +13,7 @@
 "sidebar.eject" = "取り出す";
 
 "status.loading" = "読み込み中";
+"status.compressing" = "圧縮中";
 "status.items.one" = "%d項目";
 "status.items.other" = "%d項目";
 "status.selected" = "、%d項目を選択";
@@ -46,6 +47,7 @@
 "category.file" = "ファイル";
 
 "menu.display.iconView" = "アイコン表示";
+"menu.display.listView" = "リスト表示";
 "menu.display.smallIcons" = "小さいアイコン";
 "menu.display.mediumIcons" = "中アイコン";
 "menu.display.largeIcons" = "大きいアイコン";
@@ -53,18 +55,30 @@
 "menu.tags.clear" = "タグを消去";
 "menu.open" = "開く";
 "menu.quickLook" = "クイックルック";
+"menu.getInfo" = "情報を見る";
 "menu.newFolder" = "新規フォルダ";
 "menu.rename" = "名前を変更";
 "menu.moveToTrash" = "ゴミ箱に入れる";
 "menu.copy" = "コピー";
+"menu.copyPath" = "パスをコピー";
+"menu.compress" = "圧縮";
 "menu.paste" = "ペースト";
 "menu.revealInFinder" = "Finderで表示";
+
+"info.selection" = "選択: %d項目";
+"info.kind" = "種類";
+"info.size" = "サイズ";
+"info.extension" = "拡張子";
+"info.where" = "場所";
+"info.created" = "作成日";
+"info.modified" = "変更日";
 
 "dialog.newFolder.title" = "新規フォルダ";
 "dialog.newFolder.message" = "新しいフォルダ名を入力してください。";
 "dialog.newFolder.defaultName" = "名称未設定フォルダ";
 "dialog.rename.title" = "名前を変更";
 "dialog.rename.message" = "新しい名前を入力してください。";
+"dialog.info.multipleTitle" = "%d項目";
 "dialog.tag.title" = "タグを追加";
 "dialog.tag.message" = "選択したファイルのタグ名を入力してください。";
 "dialog.tag.defaultName" = "仕事";

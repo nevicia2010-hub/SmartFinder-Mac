@@ -13,6 +13,7 @@
 "sidebar.eject" = "Éjecter";
 
 "status.loading" = "Chargement";
+"status.compressing" = "Compression";
 "status.items.one" = "%d élément";
 "status.items.other" = "%d éléments";
 "status.selected" = ", %d sélectionné(s)";
@@ -46,6 +47,7 @@
 "category.file" = "Fichier";
 
 "menu.display.iconView" = "Présentation par icônes";
+"menu.display.listView" = "Présentation par liste";
 "menu.display.smallIcons" = "Petites icônes";
 "menu.display.mediumIcons" = "Icônes moyennes";
 "menu.display.largeIcons" = "Grandes icônes";
@@ -53,18 +55,30 @@
 "menu.tags.clear" = "Effacer les tags";
 "menu.open" = "Ouvrir";
 "menu.quickLook" = "Coup d’œil";
+"menu.getInfo" = "Lire les informations";
 "menu.newFolder" = "Nouveau dossier";
 "menu.rename" = "Renommer";
 "menu.moveToTrash" = "Placer dans la corbeille";
 "menu.copy" = "Copier";
+"menu.copyPath" = "Copier le chemin";
+"menu.compress" = "Compresser";
 "menu.paste" = "Coller";
 "menu.revealInFinder" = "Afficher dans le Finder";
+
+"info.selection" = "Sélection : %d éléments";
+"info.kind" = "Type";
+"info.size" = "Taille";
+"info.extension" = "Extension";
+"info.where" = "Emplacement";
+"info.created" = "Créé";
+"info.modified" = "Modifié";
 
 "dialog.newFolder.title" = "Nouveau dossier";
 "dialog.newFolder.message" = "Saisissez un nom pour le nouveau dossier.";
 "dialog.newFolder.defaultName" = "Dossier sans titre";
 "dialog.rename.title" = "Renommer";
 "dialog.rename.message" = "Saisissez un nouveau nom.";
+"dialog.info.multipleTitle" = "%d éléments";
 "dialog.tag.title" = "Ajouter un tag";
 "dialog.tag.message" = "Saisissez un nom de tag pour les fichiers sélectionnés.";
 "dialog.tag.defaultName" = "Travail";

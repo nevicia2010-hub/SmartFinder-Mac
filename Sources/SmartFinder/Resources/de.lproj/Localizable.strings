@@ -13,6 +13,7 @@
 "sidebar.eject" = "Auswerfen";
 
 "status.loading" = "Wird geladen";
+"status.compressing" = "Komprimieren";
 "status.items.one" = "%d Objekt";
 "status.items.other" = "%d Objekte";
 "status.selected" = ", %d ausgewählt";
@@ -46,6 +47,7 @@
 "category.file" = "Datei";
 
 "menu.display.iconView" = "Symbolansicht";
+"menu.display.listView" = "Listenansicht";
 "menu.display.smallIcons" = "Kleine Symbole";
 "menu.display.mediumIcons" = "Mittlere Symbole";
 "menu.display.largeIcons" = "Große Symbole";
@@ -53,18 +55,30 @@
 "menu.tags.clear" = "Tags löschen";
 "menu.open" = "Öffnen";
 "menu.quickLook" = "Übersicht";
+"menu.getInfo" = "Informationen";
 "menu.newFolder" = "Neuer Ordner";
 "menu.rename" = "Umbenennen";
 "menu.moveToTrash" = "In den Papierkorb legen";
 "menu.copy" = "Kopieren";
+"menu.copyPath" = "Pfad kopieren";
+"menu.compress" = "Komprimieren";
 "menu.paste" = "Einfügen";
 "menu.revealInFinder" = "Im Finder anzeigen";
+
+"info.selection" = "Auswahl: %d Objekte";
+"info.kind" = "Art";
+"info.size" = "Größe";
+"info.extension" = "Erweiterung";
+"info.where" = "Ort";
+"info.created" = "Erstellt";
+"info.modified" = "Geändert";
 
 "dialog.newFolder.title" = "Neuer Ordner";
 "dialog.newFolder.message" = "Namen für den neuen Ordner eingeben.";
 "dialog.newFolder.defaultName" = "Unbenannter Ordner";
 "dialog.rename.title" = "Umbenennen";
 "dialog.rename.message" = "Neuen Namen eingeben.";
+"dialog.info.multipleTitle" = "%d Objekte";
 "dialog.tag.title" = "Tag hinzufügen";
 "dialog.tag.message" = "Geben Sie einen Tag-Namen für die ausgewählten Dateien ein.";
 "dialog.tag.defaultName" = "Arbeit";
