@@ -10,6 +10,7 @@
 "sidebar.downloads" = "Transferências";
 "sidebar.documents" = "Documentos";
 "sidebar.pictures" = "Imagens";
+"sidebar.eject" = "Ejetar";
 
 "status.loading" = "A carregar";
 "status.items.one" = "%d item";

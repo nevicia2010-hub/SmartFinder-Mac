@@ -14,6 +14,8 @@ The first version opens a folder in a Finder-like icon grid:
 - The toolbar can sort the current folder by name, type, size, or modified date.
 - Back and forward are integrated as a Finder-style segmented navigation control, with a separate Up button.
 - Finder-like toolbar menus provide display presets, grouping/sorting, system sharing, tags, and common file actions.
+- Mounted volumes in the sidebar include an eject button.
+- Toolbar buttons use larger Finder-like hit areas and symbol sizes.
 - Mounted external volumes appear in the Finder-style sidebar.
 - Common window operations are available: refresh, new folder, rename, move to Trash, copy/paste, reveal in Finder, context menu, editable path field, and icon-size control.
 - The interface follows the system language for English, Simplified Chinese, Traditional Chinese, Japanese, Korean, German, French, Spanish, Italian, and Portuguese.
@@ -56,13 +58,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.3.3.dmg`
+- `dist/SmartFinder-0.3.4.dmg`
 
 The app is ad-hoc signed for local use. It is not Apple Developer ID signed or notarized, so macOS may show the standard warning the first time it is opened on another machine.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.3.3.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.3.4.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 

@@ -71,6 +71,10 @@ expect(
     mountedVolumeLocations.map(\.url.path) == ["/Volumes/CameraSSD", "/Volumes/Photo Archive"],
     "mounted volume URLs should preserve /Volumes paths"
 )
+expect(
+    mountedVolumeLocations.allSatisfy(\.isEjectable),
+    "mounted /Volumes sidebar entries should expose eject affordances"
+)
 
 let tagStore = FileTagStore()
 let taggedFile = operationsDirectory.appendingPathComponent("tagged.txt")
@@ -99,6 +103,11 @@ expect(navigationHistory.goBack() == navB, "second back should return to the mid
 navigationHistory.record(navD)
 expect(navigationHistory.current == navD, "recording a new location should make it current")
 expect(!navigationHistory.canGoForward, "recording a new location after back should clear forward history")
+
+expect(FinderToolbarMetrics.height >= 60, "toolbar should be tall enough to visually match Finder")
+expect(FinderToolbarMetrics.buttonWidth >= 44, "toolbar buttons should use Finder-like hit width")
+expect(FinderToolbarMetrics.buttonHeight >= 38, "toolbar buttons should use Finder-like hit height")
+expect(FinderToolbarMetrics.symbolSize >= 22, "toolbar symbols should not render as tiny icons")
 
 expect(SmartFinderCoreBootstrap.isAvailable, "core module should load")
 expect(category("/tmp/photo.jpg") == .image, "jpg should be image")

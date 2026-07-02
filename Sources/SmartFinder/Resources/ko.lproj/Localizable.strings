@@ -10,6 +10,7 @@
 "sidebar.downloads" = "다운로드";
 "sidebar.documents" = "문서";
 "sidebar.pictures" = "사진";
+"sidebar.eject" = "추출";
 
 "status.loading" = "불러오는 중";
 "status.items.one" = "%d개 항목";

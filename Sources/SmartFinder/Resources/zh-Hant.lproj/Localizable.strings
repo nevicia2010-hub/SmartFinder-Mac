@@ -10,6 +10,7 @@
 "sidebar.downloads" = "下載項目";
 "sidebar.documents" = "文件";
 "sidebar.pictures" = "圖片";
+"sidebar.eject" = "退出";
 
 "status.loading" = "載入中";
 "status.items.one" = "%d 個項目";

@@ -10,6 +10,7 @@
 "sidebar.downloads" = "下载";
 "sidebar.documents" = "文稿";
 "sidebar.pictures" = "图片";
+"sidebar.eject" = "推出";
 
 "status.loading" = "正在载入";
 "status.items.one" = "%d 个项目";

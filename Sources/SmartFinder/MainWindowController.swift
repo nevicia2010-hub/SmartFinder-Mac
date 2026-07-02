@@ -20,11 +20,13 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     private var navigationHistory = NavigationHistory()
     private var currentSortMode: FileSortMode = .name
     private var activeSharingPicker: NSSharingServicePicker?
+    private weak var sidebarStack: NSStackView?
 
     private struct SidebarLocation {
         let name: String
         let url: URL
         let icon: NSImage
+        let isEjectable: Bool
     }
 
     init(startURL: URL) {
@@ -82,7 +84,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
             toolbar.topAnchor.constraint(equalTo: contentView.topAnchor),
             toolbar.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             toolbar.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            toolbar.heightAnchor.constraint(equalToConstant: 44),
+            toolbar.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.height)),
 
             body.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
             body.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
@@ -164,7 +166,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         iconSizeSlider.target = self
         iconSizeSlider.action = #selector(iconSizeChanged(_:))
         iconSizeSlider.toolTip = L10n.string("toolbar.iconSize", fallback: "Icon Size")
-        iconSizeSlider.widthAnchor.constraint(equalToConstant: 110).isActive = true
+        iconSizeSlider.widthAnchor.constraint(equalToConstant: 120).isActive = true
 
         let stack = NSStackView(views: [
             backForwardControl,
@@ -184,9 +186,12 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 8
-        stack.edgeInsets = NSEdgeInsets(top: 6, left: 10, bottom: 6, right: 10)
+        stack.edgeInsets = NSEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)
         pathField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        pathField.font = .systemFont(ofSize: 14)
+        pathField.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.buttonHeight)).isActive = true
         searchField.widthAnchor.constraint(equalToConstant: 220).isActive = true
+        searchField.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.buttonHeight)).isActive = true
         return stack
     }
 
@@ -200,16 +205,17 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         backForwardControl.setToolTip(L10n.string("button.back", fallback: "Back"), forSegment: 0)
         backForwardControl.setToolTip(L10n.string("button.forward", fallback: "Forward"), forSegment: 1)
         backForwardControl.setImage(
-            NSImage(systemSymbolName: "chevron.left", accessibilityDescription: L10n.string("button.back", fallback: "Back")),
+            toolbarSymbol("chevron.left", description: L10n.string("button.back", fallback: "Back")),
             forSegment: 0
         )
         backForwardControl.setImage(
-            NSImage(systemSymbolName: "chevron.right", accessibilityDescription: L10n.string("button.forward", fallback: "Forward")),
+            toolbarSymbol("chevron.right", description: L10n.string("button.forward", fallback: "Forward")),
             forSegment: 1
         )
-        backForwardControl.setWidth(34, forSegment: 0)
-        backForwardControl.setWidth(34, forSegment: 1)
-        backForwardControl.widthAnchor.constraint(equalToConstant: 70).isActive = true
+        backForwardControl.setWidth(CGFloat(FinderToolbarMetrics.navigationSegmentWidth), forSegment: 0)
+        backForwardControl.setWidth(CGFloat(FinderToolbarMetrics.navigationSegmentWidth), forSegment: 1)
+        backForwardControl.widthAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.navigationSegmentWidth * 2)).isActive = true
+        backForwardControl.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.buttonHeight)).isActive = true
     }
 
     private func toolbarIconButton(symbolName: String, fallbackTitle: String, action: Selector) -> NSButton {
@@ -217,13 +223,24 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         button.toolTip = fallbackTitle
         button.bezelStyle = .texturedRounded
         button.imagePosition = .imageOnly
-        button.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: fallbackTitle)
+        button.image = toolbarSymbol(symbolName, description: fallbackTitle)
+        button.imageScaling = .scaleProportionallyUpOrDown
         if button.image == nil {
             button.title = fallbackTitle
             button.imagePosition = .noImage
         }
-        button.widthAnchor.constraint(greaterThanOrEqualToConstant: 32).isActive = true
+        button.widthAnchor.constraint(greaterThanOrEqualToConstant: CGFloat(FinderToolbarMetrics.buttonWidth)).isActive = true
+        button.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.buttonHeight)).isActive = true
         return button
+    }
+
+    private func toolbarSymbol(_ symbolName: String, description: String) -> NSImage? {
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: description)
+        image?.size = NSSize(
+            width: CGFloat(FinderToolbarMetrics.symbolSize),
+            height: CGFloat(FinderToolbarMetrics.symbolSize)
+        )
+        return image
     }
 
     private func popUp(_ menu: NSMenu, from sender: NSButton) {
@@ -265,7 +282,21 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         stack.spacing = 2
         stack.edgeInsets = NSEdgeInsets(top: 12, left: 10, bottom: 12, right: 10)
         stack.translatesAutoresizingMaskIntoConstraints = false
+        sidebarStack = stack
 
+        populateSidebar(stack)
+
+        container.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: container.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: container.bottomAnchor)
+        ])
+        return container
+    }
+
+    private func populateSidebar(_ stack: NSStackView) {
         sidebarURLs = []
 
         addSidebarHeader(
@@ -287,15 +318,17 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
                 addSidebarButton(for: location, to: stack)
             }
         }
+    }
 
-        container.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: container.topAnchor),
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: container.bottomAnchor)
-        ])
-        return container
+    private func reloadSidebar() {
+        guard let sidebarStack else {
+            return
+        }
+        for view in sidebarStack.arrangedSubviews {
+            sidebarStack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        populateSidebar(sidebarStack)
     }
 
     private func addSidebarHeader(_ title: String, to stack: NSStackView) {
@@ -332,9 +365,44 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         button.tag = index
         button.setButtonType(.momentaryChange)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.widthAnchor.constraint(equalToConstant: 188).isActive = true
         button.heightAnchor.constraint(equalToConstant: 26).isActive = true
-        stack.addArrangedSubview(button)
+
+        if location.isEjectable {
+            let row = NSView()
+            row.translatesAutoresizingMaskIntoConstraints = false
+
+            let ejectButton = NSButton(title: "", target: self, action: #selector(ejectSidebarVolume(_:)))
+            ejectButton.toolTip = L10n.string("sidebar.eject", fallback: "Eject")
+            ejectButton.bezelStyle = .inline
+            ejectButton.isBordered = false
+            ejectButton.imagePosition = .imageOnly
+            ejectButton.image = NSImage(systemSymbolName: "eject", accessibilityDescription: L10n.string("sidebar.eject", fallback: "Eject"))
+            ejectButton.imageScaling = .scaleProportionallyDown
+            ejectButton.tag = index
+            ejectButton.translatesAutoresizingMaskIntoConstraints = false
+
+            row.addSubview(button)
+            row.addSubview(ejectButton)
+
+            NSLayoutConstraint.activate([
+                row.widthAnchor.constraint(equalToConstant: 188),
+                row.heightAnchor.constraint(equalToConstant: 26),
+
+                button.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+                button.topAnchor.constraint(equalTo: row.topAnchor),
+                button.bottomAnchor.constraint(equalTo: row.bottomAnchor),
+                button.trailingAnchor.constraint(equalTo: ejectButton.leadingAnchor, constant: -2),
+
+                ejectButton.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+                ejectButton.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+                ejectButton.widthAnchor.constraint(equalToConstant: 24),
+                ejectButton.heightAnchor.constraint(equalToConstant: 24)
+            ])
+            stack.addArrangedSubview(row)
+        } else {
+            button.widthAnchor.constraint(equalToConstant: 188).isActive = true
+            stack.addArrangedSubview(button)
+        }
     }
 
     private func makeStatusBar() -> NSView {
@@ -370,7 +438,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         mountedVolumeProvider.mountedVolumes().map { volume in
             let icon = NSWorkspace.shared.icon(forFile: volume.url.path)
             icon.size = NSSize(width: 18, height: 18)
-            return SidebarLocation(name: volume.name, url: volume.url, icon: icon)
+            return SidebarLocation(name: volume.name, url: volume.url, icon: icon, isEjectable: volume.isEjectable)
         }
     }
 
@@ -378,7 +446,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         let icon = NSImage(systemSymbolName: symbolName, accessibilityDescription: name)
             ?? NSWorkspace.shared.icon(forFile: url.path)
         icon.size = NSSize(width: 18, height: 18)
-        return SidebarLocation(name: name, url: url, icon: icon)
+        return SidebarLocation(name: name, url: url, icon: icon, isEjectable: false)
     }
 
     private func navigate(to url: URL, recordHistory: Bool) {
@@ -664,5 +732,36 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
             return
         }
         navigate(to: sidebarURLs[sender.tag], recordHistory: true)
+    }
+
+    @objc private func ejectSidebarVolume(_ sender: NSButton) {
+        guard sidebarURLs.indices.contains(sender.tag) else {
+            return
+        }
+
+        let volumeURL = sidebarURLs[sender.tag]
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let result = Result { try NSWorkspace.shared.unmountAndEjectDevice(at: volumeURL) }
+            DispatchQueue.main.async {
+                guard let self else {
+                    return
+                }
+                if case .failure(let error) = result {
+                    self.showOperationError(error)
+                    return
+                }
+                if self.currentPathIsInside(volumeURL) {
+                    let home = FileManager.default.homeDirectoryForCurrentUser
+                    self.navigate(to: home, recordHistory: true)
+                }
+                self.reloadSidebar()
+            }
+        }
+    }
+
+    private func currentPathIsInside(_ volumeURL: URL) -> Bool {
+        let currentPath = NSString(string: pathField.stringValue).standardizingPath
+        let volumePath = volumeURL.standardizedFileURL.path
+        return currentPath == volumePath || currentPath.hasPrefix(volumePath + "/")
     }
 }

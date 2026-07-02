@@ -3,10 +3,12 @@ import Foundation
 public struct MountedVolumeLocation: Hashable {
     public let name: String
     public let url: URL
+    public let isEjectable: Bool
 
-    public init(name: String, url: URL) {
+    public init(name: String, url: URL, isEjectable: Bool = false) {
         self.name = name
         self.url = url
+        self.isEjectable = isEjectable
     }
 }
 
@@ -58,7 +60,8 @@ public final class MountedVolumeProvider {
                 ?? standardizedURL.lastPathComponent
             return MountedVolumeLocation(
                 name: namesByPath[path] ?? fallbackName,
-                url: standardizedURL
+                url: standardizedURL,
+                isEjectable: true
             )
         }
         .sorted {
