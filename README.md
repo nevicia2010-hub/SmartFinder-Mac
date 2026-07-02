@@ -1,4 +1,6 @@
-# SmartFinder
+# SmartFinder for Mac
+
+A lightweight macOS Finder companion for selective thumbnails: real previews for photos and RAW files, clean system icons for documents, archives, and code.
 
 SmartFinder is a native macOS folder browser for people who want Finder-like navigation with more predictable thumbnails.
 
