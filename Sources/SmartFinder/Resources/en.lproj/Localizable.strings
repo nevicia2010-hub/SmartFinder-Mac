@@ -48,6 +48,7 @@
 
 "menu.display.iconView" = "Icon View";
 "menu.display.listView" = "List View";
+"menu.display.columnView" = "Column View";
 "menu.display.smallIcons" = "Small Icons";
 "menu.display.mediumIcons" = "Medium Icons";
 "menu.display.largeIcons" = "Large Icons";

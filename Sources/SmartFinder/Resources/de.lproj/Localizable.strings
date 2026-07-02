@@ -48,6 +48,7 @@
 
 "menu.display.iconView" = "Symbolansicht";
 "menu.display.listView" = "Listenansicht";
+"menu.display.columnView" = "Spaltenansicht";
 "menu.display.smallIcons" = "Kleine Symbole";
 "menu.display.mediumIcons" = "Mittlere Symbole";
 "menu.display.largeIcons" = "Große Symbole";

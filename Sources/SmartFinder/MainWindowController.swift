@@ -824,6 +824,12 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             action: #selector(useListView),
             state: currentViewMode == .list ? .on : .off
         ))
+        menu.addItem(menuItem(
+            "menu.display.columnView",
+            fallback: "Column View",
+            action: #selector(useColumnView),
+            state: currentViewMode == .column ? .on : .off
+        ))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.display.smallIcons", fallback: "Small Icons", action: #selector(useSmallIcons)))
         menu.addItem(menuItem("menu.display.mediumIcons", fallback: "Medium Icons", action: #selector(useMediumIcons)))
@@ -933,6 +939,10 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
 
     @objc private func useListView() {
         setViewMode(.list)
+    }
+
+    @objc private func useColumnView() {
+        setViewMode(.column)
     }
 
     private func setIconSizePreset(_ size: Double) {

@@ -48,6 +48,7 @@
 
 "menu.display.iconView" = "아이콘 보기";
 "menu.display.listView" = "목록 보기";
+"menu.display.columnView" = "열 보기";
 "menu.display.smallIcons" = "작은 아이콘";
 "menu.display.mediumIcons" = "중간 아이콘";
 "menu.display.largeIcons" = "큰 아이콘";

@@ -28,7 +28,8 @@ The first version opens a folder in a Finder-like icon grid:
 - Toolbar buttons use larger Finder-like hit areas and symbol sizes.
 - In full screen, the custom toolbar keeps a top guard so the revealed macOS menu bar does not cover the controls.
 - Mounted external volumes appear in the Finder-style sidebar.
-- Icon view and list view are both available from the Display menu.
+- Icon view, list view, and lightweight column view are available from the Display menu.
+- Column view follows the current path through parent folders and opens child columns with system icons only, avoiding document thumbnail generation.
 - A path breadcrumb bar lets you jump directly to parent folders.
 - Common window operations are available: refresh, new folder, rename, move to Trash, copy/paste, copy path, compress, reveal in Finder, Get Info, context menu, editable path field, and icon-size control.
 - The interface follows the system language for English, Simplified Chinese, Traditional Chinese, Japanese, Korean, German, French, Spanish, Italian, and Portuguese.
@@ -71,13 +72,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.6.1.dmg`
+- `dist/SmartFinder-0.7.0.dmg`
 
 The app is ad-hoc signed for local use. It is not Apple Developer ID signed or notarized, so macOS may show the standard warning the first time it is opened on another machine.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.6.1.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.7.0.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 
@@ -93,6 +94,7 @@ SmartFinder is intentionally selective about content thumbnails:
 - PDF, Office, audio, archive, code, and unknown files stay lightweight and readable with macOS system icons plus type/size subtitles.
 - This keeps large mixed folders easier to scan without asking macOS to render every document page.
 - List view uses metadata and system icons only; it does not run the thumbnail pipeline.
+- Column view uses metadata and system icons only; it does not run the thumbnail pipeline.
 - The details pane uses file metadata and system icons, so it does not start a heavy preview database.
 - Toolbar menus are created on demand and operate on the current folder or current selection; SmartFinder does not run a full-disk indexer or pre-render document thumbnails.
 

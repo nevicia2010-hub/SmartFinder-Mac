@@ -48,6 +48,7 @@
 
 "menu.display.iconView" = "アイコン表示";
 "menu.display.listView" = "リスト表示";
+"menu.display.columnView" = "カラム表示";
 "menu.display.smallIcons" = "小さいアイコン";
 "menu.display.mediumIcons" = "中アイコン";
 "menu.display.largeIcons" = "大きいアイコン";

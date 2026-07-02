@@ -48,6 +48,7 @@
 
 "menu.display.iconView" = "图标视图";
 "menu.display.listView" = "列表视图";
+"menu.display.columnView" = "列视图";
 "menu.display.smallIcons" = "小图标";
 "menu.display.mediumIcons" = "中图标";
 "menu.display.largeIcons" = "大图标";

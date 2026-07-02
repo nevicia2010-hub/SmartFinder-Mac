@@ -48,6 +48,7 @@
 
 "menu.display.iconView" = "Vista de iconos";
 "menu.display.listView" = "Vista de lista";
+"menu.display.columnView" = "Vista de columnas";
 "menu.display.smallIcons" = "Iconos pequeños";
 "menu.display.mediumIcons" = "Iconos medianos";
 "menu.display.largeIcons" = "Iconos grandes";

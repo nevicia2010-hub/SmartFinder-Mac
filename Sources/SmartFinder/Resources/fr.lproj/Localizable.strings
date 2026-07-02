@@ -48,6 +48,7 @@
 
 "menu.display.iconView" = "Présentation par icônes";
 "menu.display.listView" = "Présentation par liste";
+"menu.display.columnView" = "Présentation par colonnes";
 "menu.display.smallIcons" = "Petites icônes";
 "menu.display.mediumIcons" = "Icônes moyennes";
 "menu.display.largeIcons" = "Grandes icônes";

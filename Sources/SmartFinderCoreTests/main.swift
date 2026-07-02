@@ -126,6 +126,15 @@ expect(
     breadcrumbComponents.map(\.title) == ["/", "Users", "bingwang", "Pictures", "RAW"],
     "path breadcrumb should expose readable component titles"
 )
+let columnPath = ColumnViewPath.columns(for: breadcrumbURL)
+expect(
+    columnPath.map(\.folderURL.path) == ["/", "/Users", "/Users/bingwang", "/Users/bingwang/Pictures", "/Users/bingwang/Pictures/RAW"],
+    "column view path should load one column for each folder in the current path"
+)
+expect(
+    columnPath.map { $0.selectedURL?.path ?? "" } == ["/Users", "/Users/bingwang", "/Users/bingwang/Pictures", "/Users/bingwang/Pictures/RAW", ""],
+    "column view path should select the next folder in each parent column"
+)
 
 let infoFile = operationsDirectory.appendingPathComponent("info.pdf")
 try "pdf-data".write(to: infoFile, atomically: true, encoding: .utf8)

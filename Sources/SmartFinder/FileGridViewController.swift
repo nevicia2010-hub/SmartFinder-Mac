@@ -11,6 +11,7 @@ enum FileSortMode: Equatable {
 enum FileViewMode: Equatable {
     case icon
     case list
+    case column
 }
 
 protocol SmartCollectionViewKeyDelegate: AnyObject {
@@ -176,10 +177,20 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private let tableView = SmartTableView()
     private let collectionScrollView = NSScrollView()
     private let tableScrollView = NSScrollView()
+    private let columnScrollView = NSScrollView()
+    private let columnStackView = NSStackView()
+
+    private struct ColumnFolder {
+        let url: URL
+        let items: [FileItem]
+        let selectedURL: URL?
+    }
 
     private var currentFolderURL: URL?
     private var allItems: [FileItem] = []
     private var displayedItems: [FileItem] = []
+    private var columnFolders: [ColumnFolder] = []
+    private var columnTables: [SmartTableView] = []
     private var filterText = ""
     private var iconSize: CGFloat = 96
     private var sortMode: FileSortMode = .name
@@ -187,6 +198,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private var includesHiddenItems = false
     private var showsFileExtensions = true
     private var showsSelectionCheckboxes = false
+    private var suppressColumnSelectionChange = false
 
     override func loadView() {
         let layout = NSCollectionViewFlowLayout()
@@ -215,12 +227,15 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         tableScrollView.drawsBackground = true
         tableScrollView.documentView = tableView
         tableScrollView.isHidden = true
+        configureColumnView()
 
         let container = NSView()
         collectionScrollView.translatesAutoresizingMaskIntoConstraints = false
         tableScrollView.translatesAutoresizingMaskIntoConstraints = false
+        columnScrollView.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(collectionScrollView)
         container.addSubview(tableScrollView)
+        container.addSubview(columnScrollView)
         NSLayoutConstraint.activate([
             collectionScrollView.topAnchor.constraint(equalTo: container.topAnchor),
             collectionScrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
@@ -230,7 +245,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             tableScrollView.topAnchor.constraint(equalTo: container.topAnchor),
             tableScrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             tableScrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            tableScrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+            tableScrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+
+            columnScrollView.topAnchor.constraint(equalTo: container.topAnchor),
+            columnScrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            columnScrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            columnScrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
         ])
         view = container
     }
@@ -258,6 +278,19 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         updateTableCheckboxColumnVisibility()
     }
 
+    private func configureColumnView() {
+        columnStackView.orientation = .horizontal
+        columnStackView.alignment = .top
+        columnStackView.spacing = 0
+
+        columnScrollView.hasVerticalScroller = false
+        columnScrollView.hasHorizontalScroller = true
+        columnScrollView.drawsBackground = true
+        columnScrollView.backgroundColor = .controlBackgroundColor
+        columnScrollView.documentView = columnStackView
+        columnScrollView.isHidden = true
+    }
+
     private func addTableColumn(identifier: String, titleKey: String, fallback: String, width: CGFloat) {
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(identifier))
         column.title = titleKey.isEmpty ? fallback : L10n.string(titleKey, fallback: fallback)
@@ -271,6 +304,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         currentFolderURL = folderURL
         allItems = []
         displayedItems = []
+        columnFolders = []
         reloadViews()
         updateStatus(prefix: L10n.string("status.loading", fallback: "Loading"))
 
@@ -285,9 +319,13 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                 case .success(let items):
                     self.allItems = items
                     self.applyCurrentFilter()
+                    if self.viewMode == .column {
+                        self.rebuildColumnView(for: folderURL)
+                    }
                 case .failure(let error):
                     self.allItems = []
                     self.displayedItems = []
+                    self.columnFolders = []
                     self.reloadViews()
                     self.onStatusChange?(
                         L10n.format(
@@ -332,6 +370,10 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         viewMode = mode
         collectionScrollView.isHidden = mode != .icon
         tableScrollView.isHidden = mode != .list
+        columnScrollView.isHidden = mode != .column
+        if mode == .column, let currentFolderURL {
+            rebuildColumnView(for: currentFolderURL)
+        }
         reloadViews()
         select(urls: selectedURLSet)
         view.window?.makeFirstResponder(firstResponderForCurrentViewMode())
@@ -392,15 +434,40 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int {
-        displayedItems.count
+        if tableView === self.tableView {
+            return displayedItems.count
+        }
+        guard let columnIndex = columnIndex(for: tableView) else {
+            return 0
+        }
+        return itemsForColumn(at: columnIndex).count
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
-        updateVisibleTableCheckboxStates()
-        updateStatus()
+        guard let changedTable = notification.object as? NSTableView else {
+            updateStatus()
+            return
+        }
+
+        if changedTable === tableView {
+            updateVisibleTableCheckboxStates()
+            updateStatus()
+            return
+        }
+
+        guard let columnIndex = columnIndex(for: changedTable),
+              !suppressColumnSelectionChange else {
+            updateStatus()
+            return
+        }
+        handleColumnSelection(in: changedTable, columnIndex: columnIndex)
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        if tableView !== self.tableView {
+            return columnTableCell(for: tableView, row: row)
+        }
+
         guard displayedItems.indices.contains(row),
               let tableColumn else {
             return nil
@@ -530,6 +597,15 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             collectionView.selectionIndexPaths = allIndexPaths
         case .list:
             tableView.selectRowIndexes(IndexSet(integersIn: 0..<displayedItems.count), byExtendingSelection: false)
+        case .column:
+            guard let lastTable = columnTables.last,
+                  let columnIndex = columnIndex(for: lastTable) else {
+                break
+            }
+            lastTable.selectRowIndexes(
+                IndexSet(integersIn: 0..<itemsForColumn(at: columnIndex).count),
+                byExtendingSelection: false
+            )
         }
         updateStatus()
     }
@@ -586,6 +662,19 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             }
 
             contextMenu().popUp(positioning: nil, at: point, in: tableView)
+        case .column:
+            guard let target = columnTable(atWindowPoint: event.locationInWindow) else {
+                return
+            }
+
+            let point = target.convert(event.locationInWindow, from: nil)
+            let row = target.row(at: point)
+            if row >= 0, !target.selectedRowIndexes.contains(row) {
+                target.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+                updateStatus()
+            }
+
+            contextMenu().popUp(positioning: nil, at: point, in: target)
         }
     }
 
@@ -941,6 +1030,19 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                     }
                     return displayedItems[row]
                 }
+        case .column:
+            for table in columnTables.reversed() {
+                guard let columnIndex = columnIndex(for: table),
+                      let row = table.selectedRowIndexes.first else {
+                    continue
+                }
+                let items = itemsForColumn(at: columnIndex)
+                guard items.indices.contains(row) else {
+                    continue
+                }
+                return [items[row]]
+            }
+            return []
         }
     }
 
@@ -963,6 +1065,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             } else {
                 tableView.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: true)
             }
+        case .column:
+            break
         }
         updateStatus()
     }
@@ -1003,6 +1107,180 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
     }
 
+    private func rebuildColumnView(for focusedFolderURL: URL) {
+        let options = DirectoryLoadOptions(includesHiddenItems: includesHiddenItems)
+        let columns = ColumnViewPath.columns(for: focusedFolderURL)
+        columnFolders = columns.map { column in
+            let items: [FileItem]
+            if column.folderURL.standardizedFileURL == focusedFolderURL.standardizedFileURL {
+                items = allItems
+            } else {
+                items = (try? directoryStore.loadItems(in: column.folderURL, options: options)) ?? []
+            }
+
+            return ColumnFolder(
+                url: column.folderURL,
+                items: sortedItems(items),
+                selectedURL: column.selectedURL
+            )
+        }
+        rebuildColumnTables()
+    }
+
+    private func rebuildColumnTables() {
+        for view in columnStackView.arrangedSubviews {
+            columnStackView.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        columnTables = []
+
+        for index in columnFolders.indices {
+            let scrollView = NSScrollView()
+            scrollView.hasVerticalScroller = true
+            scrollView.hasHorizontalScroller = false
+            scrollView.drawsBackground = true
+            scrollView.backgroundColor = .controlBackgroundColor
+            scrollView.borderType = .noBorder
+            scrollView.translatesAutoresizingMaskIntoConstraints = false
+            scrollView.widthAnchor.constraint(equalToConstant: 260).isActive = true
+            scrollView.heightAnchor.constraint(equalTo: columnStackView.heightAnchor).isActive = true
+
+            let table = SmartTableView()
+            table.dataSource = self
+            table.delegate = self
+            table.keyDelegate = self
+            table.headerView = nil
+            table.allowsMultipleSelection = false
+            table.usesAlternatingRowBackgroundColors = false
+            table.backgroundColor = .controlBackgroundColor
+            table.rowHeight = 32
+            table.intercellSpacing = NSSize(width: 0, height: 1)
+            table.tag = index
+
+            let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("columnName"))
+            column.width = 260
+            column.minWidth = 180
+            column.resizingMask = []
+            table.addTableColumn(column)
+
+            scrollView.documentView = table
+            columnTables.append(table)
+            columnStackView.addArrangedSubview(scrollView)
+        }
+
+        let width = CGFloat(max(columnFolders.count, 1)) * 260
+        let height = max(columnScrollView.contentSize.height, 500)
+        columnStackView.frame = NSRect(x: 0, y: 0, width: width, height: height)
+        selectColumnPathRows()
+        scrollColumnViewToTrailingEdge()
+    }
+
+    private func selectColumnPathRows() {
+        suppressColumnSelectionChange = true
+        defer {
+            suppressColumnSelectionChange = false
+        }
+
+        for (index, table) in columnTables.enumerated() {
+            table.deselectAll(nil)
+            guard let selectedURL = columnFolders[index].selectedURL else {
+                continue
+            }
+            let items = itemsForColumn(at: index)
+            if let row = items.firstIndex(where: { $0.url.standardizedFileURL == selectedURL.standardizedFileURL }) {
+                table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+                table.scrollRowToVisible(row)
+            }
+        }
+    }
+
+    private func scrollColumnViewToTrailingEdge() {
+        columnScrollView.layoutSubtreeIfNeeded()
+        let maxX = max(0, columnStackView.frame.width - columnScrollView.contentSize.width)
+        columnScrollView.contentView.scroll(to: NSPoint(x: maxX, y: 0))
+        columnScrollView.reflectScrolledClipView(columnScrollView.contentView)
+    }
+
+    private func handleColumnSelection(in table: NSTableView, columnIndex: Int) {
+        let selectedRow = table.selectedRow
+        guard selectedRow >= 0 else {
+            updateStatus()
+            return
+        }
+
+        let items = itemsForColumn(at: columnIndex)
+        guard items.indices.contains(selectedRow) else {
+            updateStatus()
+            return
+        }
+
+        let item = items[selectedRow]
+        if item.isDirectory {
+            onOpenFolder?(item.url)
+        } else {
+            updateStatus()
+        }
+    }
+
+    private func itemsForColumn(at index: Int) -> [FileItem] {
+        guard columnFolders.indices.contains(index) else {
+            return []
+        }
+        if columnFolders[index].url.standardizedFileURL == currentFolderURL?.standardizedFileURL {
+            return displayedItems
+        }
+        return columnFolders[index].items
+    }
+
+    private func columnIndex(for tableView: NSTableView) -> Int? {
+        columnTables.firstIndex { $0 === tableView }
+    }
+
+    private func columnTable(atWindowPoint point: NSPoint) -> SmartTableView? {
+        columnTables.first { table in
+            let localPoint = table.convert(point, from: nil)
+            return table.bounds.contains(localPoint)
+        }
+    }
+
+    private func columnTableCell(for tableView: NSTableView, row: Int) -> NSView? {
+        guard let columnIndex = columnIndex(for: tableView) else {
+            return nil
+        }
+        let items = itemsForColumn(at: columnIndex)
+        guard items.indices.contains(row) else {
+            return nil
+        }
+
+        let item = items[row]
+        let cell = tableCell(in: tableView, identifier: "columnNameCell", includesIcon: true)
+        cell.textField?.stringValue = item.isDirectory
+            ? "\(displayName(for: item))  >"
+            : displayName(for: item)
+        let icon = NSWorkspace.shared.icon(forFile: item.url.path)
+        icon.size = NSSize(width: 18, height: 18)
+        cell.imageView?.image = icon
+        return cell
+    }
+
+    private func selectColumnItems(matching urls: Set<URL>) {
+        suppressColumnSelectionChange = true
+        defer {
+            suppressColumnSelectionChange = false
+        }
+
+        for (columnIndex, table) in columnTables.enumerated() {
+            table.deselectAll(nil)
+            let items = itemsForColumn(at: columnIndex)
+            let indexes = items.enumerated().compactMap { index, item in
+                urls.contains(item.url) ? index : nil
+            }
+            if !indexes.isEmpty {
+                table.selectRowIndexes(IndexSet(indexes), byExtendingSelection: false)
+            }
+        }
+    }
+
     private func contextMenu() -> NSMenu {
         let menu = NSMenu()
         let hasSelection = !selectedItems().isEmpty
@@ -1033,8 +1311,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func tableCell(identifier: String, includesIcon: Bool) -> NSTableCellView {
+        tableCell(in: tableView, identifier: identifier, includesIcon: includesIcon)
+    }
+
+    private func tableCell(in ownerTable: NSTableView, identifier: String, includesIcon: Bool) -> NSTableCellView {
         let cellIdentifier = NSUserInterfaceItemIdentifier(identifier)
-        if let cell = tableView.makeView(withIdentifier: cellIdentifier, owner: self) as? NSTableCellView {
+        if let cell = ownerTable.makeView(withIdentifier: cellIdentifier, owner: self) as? NSTableCellView {
             return cell
         }
 
@@ -1079,6 +1361,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private func reloadViews() {
         collectionView.reloadData()
         tableView.reloadData()
+        columnTables.forEach { $0.reloadData() }
     }
 
     private func select(urls: Set<URL>) {
@@ -1097,6 +1380,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             collectionView.selectionIndexPaths = Set(indexes.map { IndexPath(item: $0, section: 0) })
         case .list:
             tableView.selectRowIndexes(IndexSet(indexes), byExtendingSelection: false)
+        case .column:
+            selectColumnItems(matching: urls)
         }
     }
 
@@ -1106,6 +1391,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             return collectionView
         case .list:
             return tableView
+        case .column:
+            return columnTables.last ?? columnScrollView
         }
     }
 
