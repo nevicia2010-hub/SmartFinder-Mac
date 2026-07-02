@@ -209,4 +209,30 @@ expect(IconDisplayPolicy.style(for: .audio) == .systemIcon, "audio files should 
 expect(IconDisplayPolicy.style(for: .archive) == .systemIcon, "archives should keep system default icons")
 expect(IconDisplayPolicy.style(for: .code) == .systemIcon, "code files should keep system default icons")
 expect(IconDisplayPolicy.style(for: .other) == .systemIcon, "unknown files should keep system default icons")
+let yellowTaggedFolder = FileItem(
+    url: URL(fileURLWithPath: "/tmp/yellow-folder", isDirectory: true),
+    name: "yellow-folder",
+    isDirectory: true,
+    category: .folder,
+    finderLabelNumber: FinderTagColor.yellow.labelNumber
+)
+expect(
+    IconDisplayPolicy.style(for: yellowTaggedFolder) == .tintedFolder(.yellow),
+    "tagged folders should render with the Finder label color applied to the folder icon"
+)
+let untaggedFolder = FileItem(
+    url: URL(fileURLWithPath: "/tmp/plain-folder", isDirectory: true),
+    name: "plain-folder",
+    isDirectory: true,
+    category: .folder
+)
+expect(IconDisplayPolicy.style(for: untaggedFolder) == .systemIcon, "untagged folders should keep the standard folder icon")
+let redTaggedDocument = FileItem(
+    url: URL(fileURLWithPath: "/tmp/document.pdf"),
+    name: "document.pdf",
+    isDirectory: false,
+    category: .document,
+    finderLabelNumber: FinderTagColor.red.labelNumber
+)
+expect(IconDisplayPolicy.style(for: redTaggedDocument) == .systemIcon, "tagged files should keep their system type icons")
 print("SmartFinderCoreTests passed")
