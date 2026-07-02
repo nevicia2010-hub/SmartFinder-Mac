@@ -24,6 +24,11 @@
 "toolbar.revealInFinder" = "Mostrar en Finder";
 "toolbar.iconSize" = "Tamaño de icono";
 "toolbar.navigation" = "Atrás / Adelante";
+"toolbar.display" = "Visualización";
+"toolbar.group" = "Agrupar";
+"toolbar.share" = "Compartir";
+"toolbar.tags" = "Etiquetas";
+"toolbar.actions" = "Acciones";
 "toolbar.sort.toolTip" = "Ordenar";
 "toolbar.sort.name" = "Nombre";
 "toolbar.sort.type" = "Tipo";
@@ -39,6 +44,12 @@
 "category.code" = "Código";
 "category.file" = "Archivo";
 
+"menu.display.iconView" = "Vista de iconos";
+"menu.display.smallIcons" = "Iconos pequeños";
+"menu.display.mediumIcons" = "Iconos medianos";
+"menu.display.largeIcons" = "Iconos grandes";
+"menu.tags.add" = "Añadir etiqueta...";
+"menu.tags.clear" = "Borrar etiquetas";
 "menu.open" = "Abrir";
 "menu.quickLook" = "Vista rápida";
 "menu.newFolder" = "Nueva carpeta";
@@ -53,5 +64,8 @@
 "dialog.newFolder.defaultName" = "Carpeta sin título";
 "dialog.rename.title" = "Renombrar";
 "dialog.rename.message" = "Introduce un nuevo nombre.";
+"dialog.tag.title" = "Añadir etiqueta";
+"dialog.tag.message" = "Introduce un nombre de etiqueta para los archivos seleccionados.";
+"dialog.tag.defaultName" = "Trabajo";
 "dialog.ok" = "Aceptar";
 "dialog.cancel" = "Cancelar";

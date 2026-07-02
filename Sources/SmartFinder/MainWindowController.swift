@@ -8,7 +8,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     private let statusField = NSTextField(labelWithString: "")
     private let searchField = NSSearchField()
     private let iconSizeSlider = NSSlider(value: 96, minValue: 64, maxValue: 180, target: nil, action: nil)
-    private let sortPopup = NSPopUpButton()
+    private let fileTagStore = FileTagStore()
     private let backForwardControl = NSSegmentedControl()
     private lazy var upButton = toolbarIconButton(
         symbolName: "chevron.up",
@@ -18,6 +18,8 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
 
     private var sidebarURLs: [URL] = []
     private var navigationHistory = NavigationHistory()
+    private var currentSortMode: FileSortMode = .name
+    private var activeSharingPicker: NSSharingServicePicker?
 
     private struct SidebarLocation {
         let name: String
@@ -123,6 +125,31 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
             fallbackTitle: L10n.string("toolbar.refresh", fallback: "Refresh"),
             action: #selector(refreshCurrentFolder)
         )
+        let displayButton = toolbarIconButton(
+            symbolName: "square.grid.2x2",
+            fallbackTitle: L10n.string("toolbar.display", fallback: "Display"),
+            action: #selector(showDisplayMenu(_:))
+        )
+        let groupButton = toolbarIconButton(
+            symbolName: "rectangle.grid.1x2",
+            fallbackTitle: L10n.string("toolbar.group", fallback: "Group"),
+            action: #selector(showGroupMenu(_:))
+        )
+        let shareButton = toolbarIconButton(
+            symbolName: "square.and.arrow.up",
+            fallbackTitle: L10n.string("toolbar.share", fallback: "Share"),
+            action: #selector(shareSelection(_:))
+        )
+        let tagButton = toolbarIconButton(
+            symbolName: "tag",
+            fallbackTitle: L10n.string("toolbar.tags", fallback: "Tags"),
+            action: #selector(showTagMenu(_:))
+        )
+        let actionButton = toolbarIconButton(
+            symbolName: "ellipsis.circle",
+            fallbackTitle: L10n.string("toolbar.actions", fallback: "Actions"),
+            action: #selector(showActionMenu(_:))
+        )
         let newFolderButton = toolbarIconButton(
             symbolName: "folder.badge.plus",
             fallbackTitle: L10n.string("toolbar.newFolder", fallback: "New Folder"),
@@ -138,17 +165,20 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         iconSizeSlider.action = #selector(iconSizeChanged(_:))
         iconSizeSlider.toolTip = L10n.string("toolbar.iconSize", fallback: "Icon Size")
         iconSizeSlider.widthAnchor.constraint(equalToConstant: 110).isActive = true
-        configureSortPopup()
 
         let stack = NSStackView(views: [
             backForwardControl,
             upButton,
+            displayButton,
+            groupButton,
+            shareButton,
+            tagButton,
+            actionButton,
             refreshButton,
             newFolderButton,
             revealButton,
             pathField,
             searchField,
-            sortPopup,
             iconSizeSlider
         ])
         stack.orientation = .horizontal
@@ -182,20 +212,6 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         backForwardControl.widthAnchor.constraint(equalToConstant: 70).isActive = true
     }
 
-    private func configureSortPopup() {
-        sortPopup.removeAllItems()
-        sortPopup.addItems(withTitles: [
-            L10n.string("toolbar.sort.name", fallback: "Name"),
-            L10n.string("toolbar.sort.type", fallback: "Type"),
-            L10n.string("toolbar.sort.size", fallback: "Size"),
-            L10n.string("toolbar.sort.modified", fallback: "Modified")
-        ])
-        sortPopup.toolTip = L10n.string("toolbar.sort.toolTip", fallback: "Sort")
-        sortPopup.target = self
-        sortPopup.action = #selector(sortModeChanged(_:))
-        sortPopup.widthAnchor.constraint(equalToConstant: 122).isActive = true
-    }
-
     private func toolbarIconButton(symbolName: String, fallbackTitle: String, action: Selector) -> NSButton {
         let button = NSButton(title: "", target: self, action: action)
         button.toolTip = fallbackTitle
@@ -208,6 +224,33 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         }
         button.widthAnchor.constraint(greaterThanOrEqualToConstant: 32).isActive = true
         return button
+    }
+
+    private func popUp(_ menu: NSMenu, from sender: NSButton) {
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 2), in: sender)
+    }
+
+    private func menuItem(
+        _ key: String,
+        fallback: String,
+        action: Selector,
+        enabled: Bool = true,
+        state: NSControl.StateValue = .off
+    ) -> NSMenuItem {
+        let item = NSMenuItem(title: L10n.string(key, fallback: fallback), action: action, keyEquivalent: "")
+        item.target = self
+        item.isEnabled = enabled
+        item.state = state
+        return item
+    }
+
+    private func sortMenuItem(_ key: String, fallback: String, mode: FileSortMode, action: Selector) -> NSMenuItem {
+        menuItem(
+            key,
+            fallback: fallback,
+            action: action,
+            state: currentSortMode == mode ? .on : .off
+        )
     }
 
     private func makeSidebar() -> NSView {
@@ -377,19 +420,6 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         gridController.setIconSize(CGFloat(sender.doubleValue))
     }
 
-    @objc private func sortModeChanged(_ sender: NSPopUpButton) {
-        switch sender.indexOfSelectedItem {
-        case 1:
-            gridController.setSortMode(.type)
-        case 2:
-            gridController.setSortMode(.size)
-        case 3:
-            gridController.setSortMode(.modified)
-        default:
-            gridController.setSortMode(.name)
-        }
-    }
-
     @objc private func backForwardChanged(_ sender: NSSegmentedControl) {
         switch sender.selectedSegment {
         case 0:
@@ -399,6 +429,193 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         default:
             break
         }
+    }
+
+    @objc private func showDisplayMenu(_ sender: NSButton) {
+        let menu = NSMenu()
+        let iconViewItem = NSMenuItem(title: L10n.string("menu.display.iconView", fallback: "Icon View"), action: nil, keyEquivalent: "")
+        iconViewItem.state = .on
+        iconViewItem.isEnabled = false
+        menu.addItem(iconViewItem)
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(menuItem("menu.display.smallIcons", fallback: "Small Icons", action: #selector(useSmallIcons)))
+        menu.addItem(menuItem("menu.display.mediumIcons", fallback: "Medium Icons", action: #selector(useMediumIcons)))
+        menu.addItem(menuItem("menu.display.largeIcons", fallback: "Large Icons", action: #selector(useLargeIcons)))
+        popUp(menu, from: sender)
+    }
+
+    @objc private func showGroupMenu(_ sender: NSButton) {
+        let menu = NSMenu()
+        menu.addItem(sortMenuItem("toolbar.sort.name", fallback: "Name", mode: .name, action: #selector(sortByName)))
+        menu.addItem(sortMenuItem("toolbar.sort.type", fallback: "Type", mode: .type, action: #selector(sortByType)))
+        menu.addItem(sortMenuItem("toolbar.sort.size", fallback: "Size", mode: .size, action: #selector(sortBySize)))
+        menu.addItem(sortMenuItem("toolbar.sort.modified", fallback: "Modified", mode: .modified, action: #selector(sortByModified)))
+        popUp(menu, from: sender)
+    }
+
+    @objc private func showTagMenu(_ sender: NSButton) {
+        let hasSelection = gridController.selectedItemCount() > 0
+        let menu = NSMenu()
+        menu.addItem(menuItem("menu.tags.add", fallback: "Add Tag...", action: #selector(addTag), enabled: hasSelection))
+        menu.addItem(menuItem("menu.tags.clear", fallback: "Clear Tags", action: #selector(clearTags), enabled: hasSelection))
+        popUp(menu, from: sender)
+    }
+
+    @objc private func showActionMenu(_ sender: NSButton) {
+        let hasSelection = gridController.selectedItemCount() > 0
+        let canPaste = gridController.currentFolder() != nil
+        let menu = NSMenu()
+        menu.addItem(menuItem("menu.open", fallback: "Open", action: #selector(openSelectionFromToolbar), enabled: hasSelection))
+        menu.addItem(menuItem("menu.quickLook", fallback: "Quick Look", action: #selector(quickLookSelectionFromToolbar), enabled: hasSelection))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(menuItem("menu.newFolder", fallback: "New Folder", action: #selector(createFolder), enabled: canPaste))
+        menu.addItem(menuItem("menu.rename", fallback: "Rename", action: #selector(renameSelectionFromToolbar), enabled: gridController.selectedItemCount() == 1))
+        menu.addItem(menuItem("menu.moveToTrash", fallback: "Move to Trash", action: #selector(moveSelectionToTrashFromToolbar), enabled: hasSelection))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(menuItem("menu.copy", fallback: "Copy", action: #selector(copySelectionFromToolbar), enabled: hasSelection))
+        menu.addItem(menuItem("menu.paste", fallback: "Paste", action: #selector(pasteIntoFolderFromToolbar), enabled: canPaste))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(menuItem("menu.revealInFinder", fallback: "Reveal in Finder", action: #selector(revealInFinder), enabled: hasSelection || canPaste))
+        popUp(menu, from: sender)
+    }
+
+    @objc private func shareSelection(_ sender: NSButton) {
+        let urls = gridController.selectedURLs()
+        guard !urls.isEmpty else {
+            NSSound.beep()
+            return
+        }
+        activeSharingPicker = NSSharingServicePicker(items: urls)
+        activeSharingPicker?.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+    }
+
+    @objc private func useSmallIcons() {
+        setIconSizePreset(72)
+    }
+
+    @objc private func useMediumIcons() {
+        setIconSizePreset(96)
+    }
+
+    @objc private func useLargeIcons() {
+        setIconSizePreset(144)
+    }
+
+    private func setIconSizePreset(_ size: Double) {
+        iconSizeSlider.doubleValue = size
+        gridController.setIconSize(CGFloat(size))
+    }
+
+    @objc private func sortByName() {
+        setSortMode(.name)
+    }
+
+    @objc private func sortByType() {
+        setSortMode(.type)
+    }
+
+    @objc private func sortBySize() {
+        setSortMode(.size)
+    }
+
+    @objc private func sortByModified() {
+        setSortMode(.modified)
+    }
+
+    private func setSortMode(_ mode: FileSortMode) {
+        currentSortMode = mode
+        gridController.setSortMode(mode)
+    }
+
+    @objc private func addTag() {
+        guard !gridController.selectedURLs().isEmpty else {
+            NSSound.beep()
+            return
+        }
+        guard let tagName = promptForTagName() else {
+            return
+        }
+        applyTag(named: tagName)
+    }
+
+    @objc private func clearTags() {
+        let urls = gridController.selectedURLs()
+        guard !urls.isEmpty else {
+            NSSound.beep()
+            return
+        }
+        do {
+            for url in urls {
+                try fileTagStore.clearTags(for: url)
+            }
+            gridController.refresh()
+        } catch {
+            showOperationError(error)
+        }
+    }
+
+    private func applyTag(named tagName: String) {
+        do {
+            for url in gridController.selectedURLs() {
+                var tagNames = try fileTagStore.tagNames(for: url)
+                if !tagNames.contains(tagName) {
+                    tagNames.append(tagName)
+                }
+                try fileTagStore.setTagNames(tagNames, for: url)
+            }
+            gridController.refresh()
+        } catch {
+            showOperationError(error)
+        }
+    }
+
+    private func promptForTagName() -> String? {
+        let alert = NSAlert()
+        alert.messageText = L10n.string("dialog.tag.title", fallback: "Add Tag")
+        alert.informativeText = L10n.string("dialog.tag.message", fallback: "Enter a tag name for the selected files.")
+        alert.addButton(withTitle: L10n.string("dialog.ok", fallback: "OK"))
+        alert.addButton(withTitle: L10n.string("dialog.cancel", fallback: "Cancel"))
+
+        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
+        textField.stringValue = L10n.string("dialog.tag.defaultName", fallback: "Work")
+        alert.accessoryView = textField
+
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else {
+            return nil
+        }
+
+        let trimmed = textField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func showOperationError(_ error: Error) {
+        let alert = NSAlert(error: error)
+        alert.runModal()
+    }
+
+    @objc private func openSelectionFromToolbar() {
+        gridController.openSelection()
+    }
+
+    @objc private func quickLookSelectionFromToolbar() {
+        gridController.quickLookSelection()
+    }
+
+    @objc private func renameSelectionFromToolbar() {
+        gridController.renameSelection()
+    }
+
+    @objc private func moveSelectionToTrashFromToolbar() {
+        gridController.moveSelectedToTrash()
+    }
+
+    @objc private func copySelectionFromToolbar() {
+        gridController.copySelectionToPasteboard()
+    }
+
+    @objc private func pasteIntoFolderFromToolbar() {
+        gridController.pasteIntoCurrentFolder()
     }
 
     @objc private func openPathFromField() {

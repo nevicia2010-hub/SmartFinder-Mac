@@ -24,6 +24,11 @@
 "toolbar.revealInFinder" = "Finder에서 보기";
 "toolbar.iconSize" = "아이콘 크기";
 "toolbar.navigation" = "뒤로 / 앞으로";
+"toolbar.display" = "보기";
+"toolbar.group" = "그룹";
+"toolbar.share" = "공유";
+"toolbar.tags" = "태그";
+"toolbar.actions" = "동작";
 "toolbar.sort.toolTip" = "정렬";
 "toolbar.sort.name" = "이름";
 "toolbar.sort.type" = "유형";
@@ -39,6 +44,12 @@
 "category.code" = "코드";
 "category.file" = "파일";
 
+"menu.display.iconView" = "아이콘 보기";
+"menu.display.smallIcons" = "작은 아이콘";
+"menu.display.mediumIcons" = "중간 아이콘";
+"menu.display.largeIcons" = "큰 아이콘";
+"menu.tags.add" = "태그 추가...";
+"menu.tags.clear" = "태그 지우기";
 "menu.open" = "열기";
 "menu.quickLook" = "훑어보기";
 "menu.newFolder" = "새 폴더";
@@ -53,5 +64,8 @@
 "dialog.newFolder.defaultName" = "무제 폴더";
 "dialog.rename.title" = "이름 변경";
 "dialog.rename.message" = "새 이름을 입력하십시오.";
+"dialog.tag.title" = "태그 추가";
+"dialog.tag.message" = "선택한 파일의 태그 이름을 입력하십시오.";
+"dialog.tag.defaultName" = "작업";
 "dialog.ok" = "확인";
 "dialog.cancel" = "취소";

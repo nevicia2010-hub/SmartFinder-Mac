@@ -1,7 +1,7 @@
 import AppKit
 import SmartFinderCore
 
-enum FileSortMode {
+enum FileSortMode: Equatable {
     case name
     case type
     case size
@@ -189,6 +189,18 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         applyCurrentFilter()
     }
 
+    func selectedURLs() -> [URL] {
+        selectedItems().map(\.url)
+    }
+
+    func selectedItemCount() -> Int {
+        selectedItems().count
+    }
+
+    func currentFolder() -> URL? {
+        currentFolderURL
+    }
+
     func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
         displayedItems.count
     }
@@ -241,7 +253,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func smartCollectionViewDidDoubleClick() {
-        openSelectedItem()
+        openSelection()
     }
 
     func smartCollectionViewDidPressReturn() {
@@ -385,7 +397,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         NSWorkspace.shared.activateFileViewerSelecting(urls)
     }
 
-    private func openSelectedItem() {
+    func openSelection() {
         guard let item = selectedItems().first else {
             return
         }
@@ -398,10 +410,14 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     @objc private func openSelectedItemFromMenu() {
-        openSelectedItem()
+        openSelection()
     }
 
     @objc private func quickLookFromMenu() {
+        quickLookSelection()
+    }
+
+    func quickLookSelection() {
         smartCollectionViewDidPressSpace()
     }
 

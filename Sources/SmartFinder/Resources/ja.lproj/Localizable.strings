@@ -24,6 +24,11 @@
 "toolbar.revealInFinder" = "Finderで表示";
 "toolbar.iconSize" = "アイコンサイズ";
 "toolbar.navigation" = "戻る / 進む";
+"toolbar.display" = "表示";
+"toolbar.group" = "グループ";
+"toolbar.share" = "共有";
+"toolbar.tags" = "タグ";
+"toolbar.actions" = "操作";
 "toolbar.sort.toolTip" = "並べ替え";
 "toolbar.sort.name" = "名前";
 "toolbar.sort.type" = "種類";
@@ -39,6 +44,12 @@
 "category.code" = "コード";
 "category.file" = "ファイル";
 
+"menu.display.iconView" = "アイコン表示";
+"menu.display.smallIcons" = "小さいアイコン";
+"menu.display.mediumIcons" = "中アイコン";
+"menu.display.largeIcons" = "大きいアイコン";
+"menu.tags.add" = "タグを追加...";
+"menu.tags.clear" = "タグを消去";
 "menu.open" = "開く";
 "menu.quickLook" = "クイックルック";
 "menu.newFolder" = "新規フォルダ";
@@ -53,5 +64,8 @@
 "dialog.newFolder.defaultName" = "名称未設定フォルダ";
 "dialog.rename.title" = "名前を変更";
 "dialog.rename.message" = "新しい名前を入力してください。";
+"dialog.tag.title" = "タグを追加";
+"dialog.tag.message" = "選択したファイルのタグ名を入力してください。";
+"dialog.tag.defaultName" = "仕事";
 "dialog.ok" = "OK";
 "dialog.cancel" = "キャンセル";

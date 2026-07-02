@@ -24,6 +24,11 @@
 "toolbar.revealInFinder" = "Reveal in Finder";
 "toolbar.iconSize" = "Icon Size";
 "toolbar.navigation" = "Back / Forward";
+"toolbar.display" = "Display";
+"toolbar.group" = "Group";
+"toolbar.share" = "Share";
+"toolbar.tags" = "Tags";
+"toolbar.actions" = "Actions";
 "toolbar.sort.toolTip" = "Sort";
 "toolbar.sort.name" = "Name";
 "toolbar.sort.type" = "Type";
@@ -39,6 +44,12 @@
 "category.code" = "Code";
 "category.file" = "File";
 
+"menu.display.iconView" = "Icon View";
+"menu.display.smallIcons" = "Small Icons";
+"menu.display.mediumIcons" = "Medium Icons";
+"menu.display.largeIcons" = "Large Icons";
+"menu.tags.add" = "Add Tag...";
+"menu.tags.clear" = "Clear Tags";
 "menu.open" = "Open";
 "menu.quickLook" = "Quick Look";
 "menu.newFolder" = "New Folder";
@@ -53,5 +64,8 @@
 "dialog.newFolder.defaultName" = "Untitled Folder";
 "dialog.rename.title" = "Rename";
 "dialog.rename.message" = "Enter a new name.";
+"dialog.tag.title" = "Add Tag";
+"dialog.tag.message" = "Enter a tag name for the selected files.";
+"dialog.tag.defaultName" = "Work";
 "dialog.ok" = "OK";
 "dialog.cancel" = "Cancel";

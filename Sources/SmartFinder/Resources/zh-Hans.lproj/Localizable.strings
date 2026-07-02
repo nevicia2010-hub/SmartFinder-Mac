@@ -24,6 +24,11 @@
 "toolbar.revealInFinder" = "在 Finder 中显示";
 "toolbar.iconSize" = "图标大小";
 "toolbar.navigation" = "后退 / 前进";
+"toolbar.display" = "显示";
+"toolbar.group" = "群组";
+"toolbar.share" = "共享";
+"toolbar.tags" = "标签";
+"toolbar.actions" = "操作";
 "toolbar.sort.toolTip" = "排序";
 "toolbar.sort.name" = "名称";
 "toolbar.sort.type" = "类型";
@@ -39,6 +44,12 @@
 "category.code" = "代码";
 "category.file" = "文件";
 
+"menu.display.iconView" = "图标视图";
+"menu.display.smallIcons" = "小图标";
+"menu.display.mediumIcons" = "中图标";
+"menu.display.largeIcons" = "大图标";
+"menu.tags.add" = "添加标签...";
+"menu.tags.clear" = "清除标签";
 "menu.open" = "打开";
 "menu.quickLook" = "快速查看";
 "menu.newFolder" = "新建文件夹";
@@ -53,5 +64,8 @@
 "dialog.newFolder.defaultName" = "未命名文件夹";
 "dialog.rename.title" = "重命名";
 "dialog.rename.message" = "输入新名称。";
+"dialog.tag.title" = "添加标签";
+"dialog.tag.message" = "为所选文件输入标签名称。";
+"dialog.tag.defaultName" = "工作";
 "dialog.ok" = "确定";
 "dialog.cancel" = "取消";

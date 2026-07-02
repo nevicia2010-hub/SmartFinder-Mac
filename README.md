@@ -13,6 +13,7 @@ The first version opens a folder in a Finder-like icon grid:
 - File tiles include a compact type/size subtitle, such as `PDF - 2.4 MB` or `CR3 - 28 MB`.
 - The toolbar can sort the current folder by name, type, size, or modified date.
 - Back and forward are integrated as a Finder-style segmented navigation control, with a separate Up button.
+- Finder-like toolbar menus provide display presets, grouping/sorting, system sharing, tags, and common file actions.
 - Mounted external volumes appear in the Finder-style sidebar.
 - Common window operations are available: refresh, new folder, rename, move to Trash, copy/paste, reveal in Finder, context menu, editable path field, and icon-size control.
 - The interface follows the system language for English, Simplified Chinese, Traditional Chinese, Japanese, Korean, German, French, Spanish, Italian, and Portuguese.
@@ -55,13 +56,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.3.2.dmg`
+- `dist/SmartFinder-0.3.3.dmg`
 
 The app is ad-hoc signed for local use. It is not Apple Developer ID signed or notarized, so macOS may show the standard warning the first time it is opened on another machine.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.3.2.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.3.3.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 
@@ -76,6 +77,7 @@ SmartFinder is intentionally selective about content thumbnails:
 - Photos, RAW files, and supported videos can use real Quick Look thumbnails.
 - PDF, Office, audio, archive, code, and unknown files stay lightweight and readable with macOS system icons plus type/size subtitles.
 - This keeps large mixed folders easier to scan without asking macOS to render every document page.
+- Toolbar menus are created on demand and operate on the current folder or current selection; SmartFinder does not run a full-disk indexer or pre-render document thumbnails.
 
 ## Localizations
 

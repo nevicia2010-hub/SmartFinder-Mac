@@ -24,6 +24,11 @@
 "toolbar.revealInFinder" = "Afficher dans le Finder";
 "toolbar.iconSize" = "Taille des icônes";
 "toolbar.navigation" = "Précédent / Suivant";
+"toolbar.display" = "Présentation";
+"toolbar.group" = "Grouper";
+"toolbar.share" = "Partager";
+"toolbar.tags" = "Tags";
+"toolbar.actions" = "Actions";
 "toolbar.sort.toolTip" = "Trier";
 "toolbar.sort.name" = "Nom";
 "toolbar.sort.type" = "Type";
@@ -39,6 +44,12 @@
 "category.code" = "Code";
 "category.file" = "Fichier";
 
+"menu.display.iconView" = "Présentation par icônes";
+"menu.display.smallIcons" = "Petites icônes";
+"menu.display.mediumIcons" = "Icônes moyennes";
+"menu.display.largeIcons" = "Grandes icônes";
+"menu.tags.add" = "Ajouter un tag...";
+"menu.tags.clear" = "Effacer les tags";
 "menu.open" = "Ouvrir";
 "menu.quickLook" = "Coup d’œil";
 "menu.newFolder" = "Nouveau dossier";
@@ -53,5 +64,8 @@
 "dialog.newFolder.defaultName" = "Dossier sans titre";
 "dialog.rename.title" = "Renommer";
 "dialog.rename.message" = "Saisissez un nouveau nom.";
+"dialog.tag.title" = "Ajouter un tag";
+"dialog.tag.message" = "Saisissez un nom de tag pour les fichiers sélectionnés.";
+"dialog.tag.defaultName" = "Travail";
 "dialog.ok" = "OK";
 "dialog.cancel" = "Annuler";

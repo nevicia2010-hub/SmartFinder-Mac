@@ -72,6 +72,16 @@ expect(
     "mounted volume URLs should preserve /Volumes paths"
 )
 
+let tagStore = FileTagStore()
+let taggedFile = operationsDirectory.appendingPathComponent("tagged.txt")
+try "tag-me".write(to: taggedFile, atomically: true, encoding: .utf8)
+try tagStore.setTagNames(["Red", "Work"], for: taggedFile)
+let writtenTags = try tagStore.tagNames(for: taggedFile)
+expect(writtenTags == ["Red", "Work"], "tag store should write and read Finder tags")
+try tagStore.clearTags(for: taggedFile)
+let clearedTags = try tagStore.tagNames(for: taggedFile)
+expect(clearedTags.isEmpty, "tag store should clear Finder tags")
+
 var navigationHistory = NavigationHistory()
 let navA = URL(fileURLWithPath: "/tmp/A", isDirectory: true)
 let navB = URL(fileURLWithPath: "/tmp/B", isDirectory: true)
