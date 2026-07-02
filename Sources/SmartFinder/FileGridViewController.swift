@@ -853,7 +853,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         let label = NSTextField(labelWithString: "")
         label.translatesAutoresizingMaskIntoConstraints = false
         label.lineBreakMode = .byTruncatingTail
-        label.font = .systemFont(ofSize: 13)
+        label.font = FinderFonts.tableCell
         cell.textField = label
         cell.addSubview(label)
 

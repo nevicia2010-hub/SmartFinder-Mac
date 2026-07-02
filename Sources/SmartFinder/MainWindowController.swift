@@ -11,6 +11,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private let fileTagStore = FileTagStore()
     private let backForwardControl = NSSegmentedControl()
     private let breadcrumbStack = NSStackView()
+    private let toolbarTitleField = NSTextField(labelWithString: "")
     private lazy var upButton = toolbarIconButton(
         symbolName: "chevron.up",
         fallbackTitle: L10n.string("button.up", fallback: "Up"),
@@ -41,6 +42,10 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             defer: false
         )
         window.title = "SmartFinder"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.styleMask.insert(.fullSizeContentView)
+        window.isMovableByWindowBackground = true
         super.init(window: window)
         window.delegate = self
 
@@ -70,57 +75,57 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
 
         let toolbar = makeToolbar()
         let breadcrumbBar = makeBreadcrumbBar()
-        let body = NSView()
+        let rightPane = NSView()
         let sidebar = makeSidebar()
         let statusBar = makeStatusBar()
 
         toolbar.translatesAutoresizingMaskIntoConstraints = false
         breadcrumbBar.translatesAutoresizingMaskIntoConstraints = false
-        body.translatesAutoresizingMaskIntoConstraints = false
+        rightPane.translatesAutoresizingMaskIntoConstraints = false
         sidebar.translatesAutoresizingMaskIntoConstraints = false
         gridController.view.translatesAutoresizingMaskIntoConstraints = false
         statusBar.translatesAutoresizingMaskIntoConstraints = false
 
-        contentView.addSubview(toolbar)
-        contentView.addSubview(breadcrumbBar)
-        contentView.addSubview(body)
-        contentView.addSubview(statusBar)
-        body.addSubview(sidebar)
-        body.addSubview(gridController.view)
+        contentView.addSubview(sidebar)
+        contentView.addSubview(rightPane)
+        rightPane.addSubview(toolbar)
+        rightPane.addSubview(breadcrumbBar)
+        rightPane.addSubview(gridController.view)
+        rightPane.addSubview(statusBar)
 
-        let toolbarTopConstraint = toolbar.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor)
+        let toolbarTopConstraint = toolbar.topAnchor.constraint(equalTo: rightPane.topAnchor)
         self.toolbarTopConstraint = toolbarTopConstraint
 
         NSLayoutConstraint.activate([
+            sidebar.topAnchor.constraint(equalTo: contentView.topAnchor),
+            sidebar.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            sidebar.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            sidebar.widthAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.sidebarWidth)),
+
+            rightPane.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor),
+            rightPane.leadingAnchor.constraint(equalTo: sidebar.trailingAnchor),
+            rightPane.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            rightPane.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+
             toolbarTopConstraint,
-            toolbar.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            toolbar.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            toolbar.leadingAnchor.constraint(equalTo: rightPane.leadingAnchor),
+            toolbar.trailingAnchor.constraint(equalTo: rightPane.trailingAnchor),
             toolbar.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.height)),
 
             breadcrumbBar.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
-            breadcrumbBar.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            breadcrumbBar.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            breadcrumbBar.heightAnchor.constraint(equalToConstant: 34),
+            breadcrumbBar.leadingAnchor.constraint(equalTo: rightPane.leadingAnchor),
+            breadcrumbBar.trailingAnchor.constraint(equalTo: rightPane.trailingAnchor),
+            breadcrumbBar.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.breadcrumbHeight)),
 
-            body.topAnchor.constraint(equalTo: breadcrumbBar.bottomAnchor),
-            body.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            body.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            body.bottomAnchor.constraint(equalTo: statusBar.topAnchor),
-
-            statusBar.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            statusBar.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            statusBar.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            statusBar.leadingAnchor.constraint(equalTo: rightPane.leadingAnchor),
+            statusBar.trailingAnchor.constraint(equalTo: rightPane.trailingAnchor),
+            statusBar.bottomAnchor.constraint(equalTo: rightPane.bottomAnchor),
             statusBar.heightAnchor.constraint(equalToConstant: 28),
 
-            sidebar.topAnchor.constraint(equalTo: body.topAnchor),
-            sidebar.leadingAnchor.constraint(equalTo: body.leadingAnchor),
-            sidebar.bottomAnchor.constraint(equalTo: body.bottomAnchor),
-            sidebar.widthAnchor.constraint(equalToConstant: 210),
-
-            gridController.view.topAnchor.constraint(equalTo: body.topAnchor),
-            gridController.view.leadingAnchor.constraint(equalTo: sidebar.trailingAnchor),
-            gridController.view.trailingAnchor.constraint(equalTo: body.trailingAnchor),
-            gridController.view.bottomAnchor.constraint(equalTo: body.bottomAnchor)
+            gridController.view.topAnchor.constraint(equalTo: breadcrumbBar.bottomAnchor),
+            gridController.view.leadingAnchor.constraint(equalTo: rightPane.leadingAnchor),
+            gridController.view.trailingAnchor.constraint(equalTo: rightPane.trailingAnchor),
+            gridController.view.bottomAnchor.constraint(equalTo: statusBar.topAnchor)
         ])
     }
 
@@ -149,7 +154,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         configureBackForwardControl()
 
         pathField.lineBreakMode = .byTruncatingMiddle
-        pathField.font = .systemFont(ofSize: 12)
+        pathField.font = FinderFonts.toolbarField
         pathField.isEditable = true
         pathField.isSelectable = true
         pathField.bezelStyle = .roundedBezel
@@ -159,11 +164,11 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         searchField.delegate = self
         searchField.placeholderString = L10n.string("search.placeholder", fallback: "Search current folder")
 
-        let refreshButton = toolbarIconButton(
-            symbolName: "arrow.clockwise",
-            fallbackTitle: L10n.string("toolbar.refresh", fallback: "Refresh"),
-            action: #selector(refreshCurrentFolder)
-        )
+        toolbarTitleField.font = FinderFonts.toolbarTitle
+        toolbarTitleField.textColor = .labelColor
+        toolbarTitleField.lineBreakMode = .byTruncatingMiddle
+        toolbarTitleField.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+
         let displayButton = toolbarIconButton(
             symbolName: "square.grid.2x2",
             fallbackTitle: L10n.string("toolbar.display", fallback: "Display"),
@@ -189,47 +194,51 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             fallbackTitle: L10n.string("toolbar.actions", fallback: "Actions"),
             action: #selector(showActionMenu(_:))
         )
-        let newFolderButton = toolbarIconButton(
-            symbolName: "folder.badge.plus",
-            fallbackTitle: L10n.string("toolbar.newFolder", fallback: "New Folder"),
-            action: #selector(createFolder)
-        )
-        let revealButton = toolbarIconButton(
-            symbolName: "finder",
-            fallbackTitle: L10n.string("toolbar.revealInFinder", fallback: "Reveal in Finder"),
-            action: #selector(revealInFinder)
-        )
 
         iconSizeSlider.target = self
         iconSizeSlider.action = #selector(iconSizeChanged(_:))
         iconSizeSlider.toolTip = L10n.string("toolbar.iconSize", fallback: "Icon Size")
-        iconSizeSlider.widthAnchor.constraint(equalToConstant: 120).isActive = true
+        iconSizeSlider.widthAnchor.constraint(equalToConstant: 104).isActive = true
+
+        let flexibleSpacer = NSView()
+        flexibleSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
         let stack = NSStackView(views: [
             backForwardControl,
             upButton,
+            toolbarTitleField,
+            flexibleSpacer,
             displayButton,
             groupButton,
             shareButton,
             tagButton,
             actionButton,
-            refreshButton,
-            newFolderButton,
-            revealButton,
-            pathField,
             searchField,
             iconSizeSlider
         ])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 8
-        stack.edgeInsets = NSEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)
+        stack.edgeInsets = NSEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
         pathField.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        pathField.font = .systemFont(ofSize: 14)
+        pathField.font = FinderFonts.toolbarField
         pathField.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.buttonHeight)).isActive = true
         searchField.widthAnchor.constraint(equalToConstant: 220).isActive = true
         searchField.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.buttonHeight)).isActive = true
-        return stack
+
+        let container = NSVisualEffectView()
+        container.material = .headerView
+        container.blendingMode = .withinWindow
+        container.state = .active
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: container.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        return container
     }
 
     private func makeBreadcrumbBar() -> NSView {
@@ -282,6 +291,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         button.toolTip = fallbackTitle
         button.bezelStyle = .texturedRounded
         button.imagePosition = .imageOnly
+        button.contentTintColor = .secondaryLabelColor
         button.image = toolbarSymbol(symbolName, description: fallbackTitle)
         button.imageScaling = .scaleProportionallyUpOrDown
         if button.image == nil {
@@ -294,11 +304,13 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     }
 
     private func toolbarSymbol(_ symbolName: String, description: String) -> NSImage? {
-        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: description)
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: description)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(hierarchicalColor: .secondaryLabelColor))
         image?.size = NSSize(
             width: CGFloat(FinderToolbarMetrics.symbolSize),
             height: CGFloat(FinderToolbarMetrics.symbolSize)
         )
+        image?.isTemplate = false
         return image
     }
 
@@ -332,14 +344,19 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private func makeSidebar() -> NSView {
         let container = NSVisualEffectView()
         container.material = .sidebar
-        container.blendingMode = .withinWindow
+        container.blendingMode = .behindWindow
         container.state = .active
 
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 2
-        stack.edgeInsets = NSEdgeInsets(top: 12, left: 10, bottom: 12, right: 10)
+        stack.edgeInsets = NSEdgeInsets(
+            top: CGFloat(FinderToolbarMetrics.sidebarTopInset),
+            left: 12,
+            bottom: 12,
+            right: 12
+        )
         stack.translatesAutoresizingMaskIntoConstraints = false
         sidebarStack = stack
 
@@ -349,7 +366,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: container.topAnchor),
             stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: container.bottomAnchor)
         ])
         return container
@@ -392,11 +409,11 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
 
     private func addSidebarHeader(_ title: String, to stack: NSStackView) {
         let field = NSTextField(labelWithString: title.uppercased(with: Locale.current))
-        field.font = .systemFont(ofSize: 11, weight: .semibold)
+        field.font = FinderFonts.sidebarHeader
         field.textColor = .secondaryLabelColor
         field.alignment = .left
         field.translatesAutoresizingMaskIntoConstraints = false
-        field.widthAnchor.constraint(equalToConstant: 188).isActive = true
+        field.widthAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.sidebarContentWidth)).isActive = true
         stack.addArrangedSubview(field)
     }
 
@@ -404,7 +421,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         let spacer = NSView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
         spacer.heightAnchor.constraint(equalToConstant: height).isActive = true
-        spacer.widthAnchor.constraint(equalToConstant: 188).isActive = true
+        spacer.widthAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.sidebarContentWidth)).isActive = true
         stack.addArrangedSubview(spacer)
     }
 
@@ -419,7 +436,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         button.isBordered = false
         button.bezelStyle = .regularSquare
         button.alignment = .left
-        button.font = .systemFont(ofSize: 13)
+        button.font = FinderFonts.sidebarRow
         button.lineBreakMode = .byTruncatingTail
         button.tag = index
         button.setButtonType(.momentaryChange)
@@ -444,7 +461,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             row.addSubview(ejectButton)
 
             NSLayoutConstraint.activate([
-                row.widthAnchor.constraint(equalToConstant: 188),
+                row.widthAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.sidebarContentWidth)),
                 row.heightAnchor.constraint(equalToConstant: 26),
 
                 button.leadingAnchor.constraint(equalTo: row.leadingAnchor),
@@ -459,14 +476,14 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             ])
             stack.addArrangedSubview(row)
         } else {
-            button.widthAnchor.constraint(equalToConstant: 188).isActive = true
+            button.widthAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.sidebarContentWidth)).isActive = true
             stack.addArrangedSubview(button)
         }
     }
 
     private func makeStatusBar() -> NSView {
         let container = NSView()
-        statusField.font = .systemFont(ofSize: 12)
+        statusField.font = FinderFonts.status
         statusField.textColor = .secondaryLabelColor
         statusField.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(statusField)
@@ -513,11 +530,17 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             navigationHistory.record(url)
         }
         pathField.stringValue = url.path
+        toolbarTitleField.stringValue = title(for: url)
         updateBreadcrumbs(for: url)
         searchField.stringValue = ""
         gridController.applyFilter("")
         gridController.load(folderURL: url)
         updateNavigationButtons()
+    }
+
+    private func title(for url: URL) -> String {
+        let name = url.lastPathComponent
+        return name.isEmpty ? url.path : name
     }
 
     private func updateBreadcrumbs(for url: URL) {
@@ -532,7 +555,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         for (index, component) in components.enumerated() {
             if index > 0 {
                 let separator = NSTextField(labelWithString: ">")
-                separator.font = .systemFont(ofSize: 12, weight: .regular)
+                separator.font = FinderFonts.breadcrumb
                 separator.textColor = .tertiaryLabelColor
                 breadcrumbStack.addArrangedSubview(separator)
             }
@@ -540,7 +563,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             let button = NSButton(title: component.title, target: self, action: #selector(openBreadcrumb(_:)))
             button.bezelStyle = .inline
             button.isBordered = false
-            button.font = .systemFont(ofSize: 12)
+            button.font = FinderFonts.breadcrumb
             button.lineBreakMode = .byTruncatingMiddle
             button.alignment = .center
             button.tag = index

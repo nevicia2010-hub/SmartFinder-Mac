@@ -141,6 +141,10 @@ expect(FinderToolbarMetrics.buttonWidth >= 44, "toolbar buttons should use Finde
 expect(FinderToolbarMetrics.buttonHeight >= 38, "toolbar buttons should use Finder-like hit height")
 expect(FinderToolbarMetrics.symbolSize >= 22, "toolbar symbols should not render as tiny icons")
 expect(FinderToolbarMetrics.fullScreenTopGuard >= 28, "full-screen top guard should keep toolbar below the revealed menu bar")
+expect(FinderToolbarMetrics.sidebarWidth >= 220, "sidebar should be close to Finder's visual width")
+expect(FinderToolbarMetrics.breadcrumbHeight <= 30, "breadcrumb bar should stay visually compact")
+expect(!FinderToolbarMetrics.usesAccentToolbarSymbols, "toolbar symbols should use neutral Finder-like tint instead of accent blue")
+expect(FinderToolbarMetrics.usesPreferredTextStyles, "interface text should use system preferred text styles where AppKit allows")
 
 expect(SmartFinderCoreBootstrap.isAvailable, "core module should load")
 expect(category("/tmp/photo.jpg") == .image, "jpg should be image")

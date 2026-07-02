@@ -20,13 +20,13 @@ final class FileItemCell: NSCollectionViewItem {
         titleField.alignment = .center
         titleField.lineBreakMode = .byTruncatingMiddle
         titleField.maximumNumberOfLines = 2
-        titleField.font = .systemFont(ofSize: 12)
+        titleField.font = FinderFonts.iconTitle
         titleField.translatesAutoresizingMaskIntoConstraints = false
 
         subtitleField.alignment = .center
         subtitleField.lineBreakMode = .byTruncatingTail
         subtitleField.maximumNumberOfLines = 1
-        subtitleField.font = .systemFont(ofSize: 10)
+        subtitleField.font = FinderFonts.iconSubtitle
         subtitleField.textColor = .secondaryLabelColor
         subtitleField.translatesAutoresizingMaskIntoConstraints = false
 
