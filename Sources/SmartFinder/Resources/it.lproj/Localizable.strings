@@ -16,3 +16,27 @@
 "status.items.other" = "%d elementi";
 "status.selected" = ", %d selezionati";
 "error.cannotReadFolder" = "Impossibile leggere la cartella: %@";
+"error.invalidPath.title" = "Impossibile aprire il percorso";
+"error.invalidPath.message" = "La cartella non esiste: %@";
+
+"toolbar.refresh" = "Aggiorna";
+"toolbar.newFolder" = "Nuova cartella";
+"toolbar.revealInFinder" = "Mostra nel Finder";
+"toolbar.iconSize" = "Dimensione icone";
+
+"menu.open" = "Apri";
+"menu.quickLook" = "Visualizzazione rapida";
+"menu.newFolder" = "Nuova cartella";
+"menu.rename" = "Rinomina";
+"menu.moveToTrash" = "Sposta nel Cestino";
+"menu.copy" = "Copia";
+"menu.paste" = "Incolla";
+"menu.revealInFinder" = "Mostra nel Finder";
+
+"dialog.newFolder.title" = "Nuova cartella";
+"dialog.newFolder.message" = "Inserisci un nome per la nuova cartella.";
+"dialog.newFolder.defaultName" = "Cartella senza nome";
+"dialog.rename.title" = "Rinomina";
+"dialog.rename.message" = "Inserisci un nuovo nome.";
+"dialog.ok" = "OK";
+"dialog.cancel" = "Annulla";

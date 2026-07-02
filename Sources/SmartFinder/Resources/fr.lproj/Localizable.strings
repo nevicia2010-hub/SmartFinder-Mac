@@ -16,3 +16,27 @@
 "status.items.other" = "%d éléments";
 "status.selected" = ", %d sélectionné(s)";
 "error.cannotReadFolder" = "Impossible de lire le dossier : %@";
+"error.invalidPath.title" = "Impossible d’ouvrir le chemin";
+"error.invalidPath.message" = "Le dossier n’existe pas : %@";
+
+"toolbar.refresh" = "Actualiser";
+"toolbar.newFolder" = "Nouveau dossier";
+"toolbar.revealInFinder" = "Afficher dans le Finder";
+"toolbar.iconSize" = "Taille des icônes";
+
+"menu.open" = "Ouvrir";
+"menu.quickLook" = "Coup d’œil";
+"menu.newFolder" = "Nouveau dossier";
+"menu.rename" = "Renommer";
+"menu.moveToTrash" = "Placer dans la corbeille";
+"menu.copy" = "Copier";
+"menu.paste" = "Coller";
+"menu.revealInFinder" = "Afficher dans le Finder";
+
+"dialog.newFolder.title" = "Nouveau dossier";
+"dialog.newFolder.message" = "Saisissez un nom pour le nouveau dossier.";
+"dialog.newFolder.defaultName" = "Dossier sans titre";
+"dialog.rename.title" = "Renommer";
+"dialog.rename.message" = "Saisissez un nouveau nom.";
+"dialog.ok" = "OK";
+"dialog.cancel" = "Annuler";

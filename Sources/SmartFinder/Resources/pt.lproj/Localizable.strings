@@ -16,3 +16,27 @@
 "status.items.other" = "%d itens";
 "status.selected" = ", %d selecionados";
 "error.cannotReadFolder" = "Não foi possível ler a pasta: %@";
+"error.invalidPath.title" = "Não é possível abrir o caminho";
+"error.invalidPath.message" = "A pasta não existe: %@";
+
+"toolbar.refresh" = "Atualizar";
+"toolbar.newFolder" = "Nova pasta";
+"toolbar.revealInFinder" = "Mostrar no Finder";
+"toolbar.iconSize" = "Tamanho dos ícones";
+
+"menu.open" = "Abrir";
+"menu.quickLook" = "Vista rápida";
+"menu.newFolder" = "Nova pasta";
+"menu.rename" = "Mudar nome";
+"menu.moveToTrash" = "Mover para o Lixo";
+"menu.copy" = "Copiar";
+"menu.paste" = "Colar";
+"menu.revealInFinder" = "Mostrar no Finder";
+
+"dialog.newFolder.title" = "Nova pasta";
+"dialog.newFolder.message" = "Introduza um nome para a nova pasta.";
+"dialog.newFolder.defaultName" = "Pasta sem título";
+"dialog.rename.title" = "Mudar nome";
+"dialog.rename.message" = "Introduza um novo nome.";
+"dialog.ok" = "OK";
+"dialog.cancel" = "Cancelar";

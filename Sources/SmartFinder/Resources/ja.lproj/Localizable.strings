@@ -16,3 +16,27 @@
 "status.items.other" = "%d項目";
 "status.selected" = "、%d項目を選択";
 "error.cannotReadFolder" = "フォルダを読み込めません: %@";
+"error.invalidPath.title" = "パスを開けません";
+"error.invalidPath.message" = "フォルダが存在しません: %@";
+
+"toolbar.refresh" = "更新";
+"toolbar.newFolder" = "新規フォルダ";
+"toolbar.revealInFinder" = "Finderで表示";
+"toolbar.iconSize" = "アイコンサイズ";
+
+"menu.open" = "開く";
+"menu.quickLook" = "クイックルック";
+"menu.newFolder" = "新規フォルダ";
+"menu.rename" = "名前を変更";
+"menu.moveToTrash" = "ゴミ箱に入れる";
+"menu.copy" = "コピー";
+"menu.paste" = "ペースト";
+"menu.revealInFinder" = "Finderで表示";
+
+"dialog.newFolder.title" = "新規フォルダ";
+"dialog.newFolder.message" = "新しいフォルダ名を入力してください。";
+"dialog.newFolder.defaultName" = "名称未設定フォルダ";
+"dialog.rename.title" = "名前を変更";
+"dialog.rename.message" = "新しい名前を入力してください。";
+"dialog.ok" = "OK";
+"dialog.cancel" = "キャンセル";

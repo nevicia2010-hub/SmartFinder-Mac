@@ -16,3 +16,27 @@
 "status.items.other" = "%d items";
 "status.selected" = ", %d selected";
 "error.cannotReadFolder" = "Cannot read folder: %@";
+"error.invalidPath.title" = "Cannot Open Path";
+"error.invalidPath.message" = "The folder does not exist: %@";
+
+"toolbar.refresh" = "Refresh";
+"toolbar.newFolder" = "New Folder";
+"toolbar.revealInFinder" = "Reveal in Finder";
+"toolbar.iconSize" = "Icon Size";
+
+"menu.open" = "Open";
+"menu.quickLook" = "Quick Look";
+"menu.newFolder" = "New Folder";
+"menu.rename" = "Rename";
+"menu.moveToTrash" = "Move to Trash";
+"menu.copy" = "Copy";
+"menu.paste" = "Paste";
+"menu.revealInFinder" = "Reveal in Finder";
+
+"dialog.newFolder.title" = "New Folder";
+"dialog.newFolder.message" = "Enter a name for the new folder.";
+"dialog.newFolder.defaultName" = "Untitled Folder";
+"dialog.rename.title" = "Rename";
+"dialog.rename.message" = "Enter a new name.";
+"dialog.ok" = "OK";
+"dialog.cancel" = "Cancel";

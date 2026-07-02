@@ -16,3 +16,27 @@
 "status.items.other" = "%d 个项目";
 "status.selected" = "，已选择 %d 项";
 "error.cannotReadFolder" = "无法读取文件夹：%@";
+"error.invalidPath.title" = "无法打开路径";
+"error.invalidPath.message" = "文件夹不存在：%@";
+
+"toolbar.refresh" = "刷新";
+"toolbar.newFolder" = "新建文件夹";
+"toolbar.revealInFinder" = "在 Finder 中显示";
+"toolbar.iconSize" = "图标大小";
+
+"menu.open" = "打开";
+"menu.quickLook" = "快速查看";
+"menu.newFolder" = "新建文件夹";
+"menu.rename" = "重命名";
+"menu.moveToTrash" = "移到废纸篓";
+"menu.copy" = "复制";
+"menu.paste" = "粘贴";
+"menu.revealInFinder" = "在 Finder 中显示";
+
+"dialog.newFolder.title" = "新建文件夹";
+"dialog.newFolder.message" = "输入新文件夹名称。";
+"dialog.newFolder.defaultName" = "未命名文件夹";
+"dialog.rename.title" = "重命名";
+"dialog.rename.message" = "输入新名称。";
+"dialog.ok" = "确定";
+"dialog.cancel" = "取消";

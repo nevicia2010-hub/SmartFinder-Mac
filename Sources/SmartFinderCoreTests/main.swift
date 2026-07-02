@@ -13,6 +13,49 @@ func category(_ path: String, isDirectory: Bool = false) -> FileCategory {
     FileClassifier.category(for: URL(fileURLWithPath: path), isDirectory: isDirectory)
 }
 
+func temporaryTestDirectory() throws -> URL {
+    let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent("SmartFinderCoreTests-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    return url
+}
+
+let fileOperations = FileOperations()
+let operationsDirectory = try temporaryTestDirectory()
+defer {
+    try? FileManager.default.removeItem(at: operationsDirectory)
+}
+
+let createdFolder = try fileOperations.createFolder(named: "Shoot", in: operationsDirectory)
+expect(
+    FileManager.default.fileExists(atPath: createdFolder.path),
+    "createFolder should create the requested folder"
+)
+
+let renamedFolder = try fileOperations.rename(createdFolder, to: "Shoot Renamed")
+expect(
+    renamedFolder.lastPathComponent == "Shoot Renamed" &&
+    FileManager.default.fileExists(atPath: renamedFolder.path),
+    "rename should move the item to the requested name"
+)
+
+let sourceFile = operationsDirectory.appendingPathComponent("photo.jpg")
+try "image-data".write(to: sourceFile, atomically: true, encoding: .utf8)
+let firstCopy = try fileOperations.copy(sourceFile, toDirectory: operationsDirectory)
+let secondCopy = try fileOperations.copy(sourceFile, toDirectory: operationsDirectory)
+expect(firstCopy.lastPathComponent == "photo copy.jpg", "first copy should use copy suffix")
+expect(secondCopy.lastPathComponent == "photo copy 2.jpg", "second copy should increment copy suffix")
+expect(
+    FileManager.default.fileExists(atPath: firstCopy.path) &&
+    FileManager.default.fileExists(atPath: secondCopy.path),
+    "copy should create both unique files"
+)
+
+expect(
+    fileOperations.uniqueDestinationURL(for: sourceFile, in: operationsDirectory).lastPathComponent == "photo copy 3.jpg",
+    "uniqueDestinationURL should skip existing copy names"
+)
+
 let mountedVolumeLocations = MountedVolumeProvider.locations(from: [
     URL(fileURLWithPath: "/"),
     URL(fileURLWithPath: "/System/Volumes/VM"),

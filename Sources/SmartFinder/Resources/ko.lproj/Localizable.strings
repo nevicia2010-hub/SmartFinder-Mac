@@ -16,3 +16,27 @@
 "status.items.other" = "%d개 항목";
 "status.selected" = ", %d개 선택됨";
 "error.cannotReadFolder" = "폴더를 읽을 수 없음: %@";
+"error.invalidPath.title" = "경로를 열 수 없음";
+"error.invalidPath.message" = "폴더가 존재하지 않음: %@";
+
+"toolbar.refresh" = "새로 고침";
+"toolbar.newFolder" = "새 폴더";
+"toolbar.revealInFinder" = "Finder에서 보기";
+"toolbar.iconSize" = "아이콘 크기";
+
+"menu.open" = "열기";
+"menu.quickLook" = "훑어보기";
+"menu.newFolder" = "새 폴더";
+"menu.rename" = "이름 변경";
+"menu.moveToTrash" = "휴지통으로 이동";
+"menu.copy" = "복사";
+"menu.paste" = "붙여넣기";
+"menu.revealInFinder" = "Finder에서 보기";
+
+"dialog.newFolder.title" = "새 폴더";
+"dialog.newFolder.message" = "새 폴더 이름을 입력하십시오.";
+"dialog.newFolder.defaultName" = "무제 폴더";
+"dialog.rename.title" = "이름 변경";
+"dialog.rename.message" = "새 이름을 입력하십시오.";
+"dialog.ok" = "확인";
+"dialog.cancel" = "취소";

@@ -5,6 +5,8 @@ final class FileItemCell: NSCollectionViewItem {
 
     private let iconView = NSImageView()
     private let titleField = NSTextField(labelWithString: "")
+    private var iconWidthConstraint: NSLayoutConstraint?
+    private var iconHeightConstraint: NSLayoutConstraint?
 
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 128, height: 150))
@@ -23,11 +25,14 @@ final class FileItemCell: NSCollectionViewItem {
         view.addSubview(iconView)
         view.addSubview(titleField)
 
+        iconWidthConstraint = iconView.widthAnchor.constraint(equalToConstant: 96)
+        iconHeightConstraint = iconView.heightAnchor.constraint(equalToConstant: 96)
+
         NSLayoutConstraint.activate([
             iconView.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
             iconView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: 96),
-            iconView.heightAnchor.constraint(equalToConstant: 96),
+            iconWidthConstraint!,
+            iconHeightConstraint!,
 
             titleField.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 6),
             titleField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 4),
@@ -50,8 +55,10 @@ final class FileItemCell: NSCollectionViewItem {
         }
     }
 
-    func configure(name: String, image: NSImage, representedURL: URL) {
+    func configure(name: String, image: NSImage, representedURL: URL, iconSize: CGFloat) {
         representedObject = representedURL
+        iconWidthConstraint?.constant = iconSize
+        iconHeightConstraint?.constant = iconSize
         iconView.image = image
         titleField.stringValue = name
     }

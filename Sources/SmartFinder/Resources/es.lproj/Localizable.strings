@@ -16,3 +16,27 @@
 "status.items.other" = "%d elementos";
 "status.selected" = ", %d seleccionado(s)";
 "error.cannotReadFolder" = "No se puede leer la carpeta: %@";
+"error.invalidPath.title" = "No se puede abrir la ruta";
+"error.invalidPath.message" = "La carpeta no existe: %@";
+
+"toolbar.refresh" = "Actualizar";
+"toolbar.newFolder" = "Nueva carpeta";
+"toolbar.revealInFinder" = "Mostrar en Finder";
+"toolbar.iconSize" = "Tamaño de icono";
+
+"menu.open" = "Abrir";
+"menu.quickLook" = "Vista rápida";
+"menu.newFolder" = "Nueva carpeta";
+"menu.rename" = "Renombrar";
+"menu.moveToTrash" = "Mover a la papelera";
+"menu.copy" = "Copiar";
+"menu.paste" = "Pegar";
+"menu.revealInFinder" = "Mostrar en Finder";
+
+"dialog.newFolder.title" = "Nueva carpeta";
+"dialog.newFolder.message" = "Introduce un nombre para la nueva carpeta.";
+"dialog.newFolder.defaultName" = "Carpeta sin título";
+"dialog.rename.title" = "Renombrar";
+"dialog.rename.message" = "Introduce un nuevo nombre.";
+"dialog.ok" = "Aceptar";
+"dialog.cancel" = "Cancelar";

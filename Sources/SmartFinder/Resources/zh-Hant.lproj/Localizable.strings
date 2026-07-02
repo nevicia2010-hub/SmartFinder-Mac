@@ -16,3 +16,27 @@
 "status.items.other" = "%d 個項目";
 "status.selected" = "，已選取 %d 項";
 "error.cannotReadFolder" = "無法讀取資料夾：%@";
+"error.invalidPath.title" = "無法開啟路徑";
+"error.invalidPath.message" = "資料夾不存在：%@";
+
+"toolbar.refresh" = "重新整理";
+"toolbar.newFolder" = "新增資料夾";
+"toolbar.revealInFinder" = "在 Finder 中顯示";
+"toolbar.iconSize" = "圖示大小";
+
+"menu.open" = "開啟";
+"menu.quickLook" = "快速查看";
+"menu.newFolder" = "新增資料夾";
+"menu.rename" = "重新命名";
+"menu.moveToTrash" = "移到垃圾桶";
+"menu.copy" = "拷貝";
+"menu.paste" = "貼上";
+"menu.revealInFinder" = "在 Finder 中顯示";
+
+"dialog.newFolder.title" = "新增資料夾";
+"dialog.newFolder.message" = "輸入新資料夾名稱。";
+"dialog.newFolder.defaultName" = "未命名資料夾";
+"dialog.rename.title" = "重新命名";
+"dialog.rename.message" = "輸入新名稱。";
+"dialog.ok" = "好";
+"dialog.cancel" = "取消";

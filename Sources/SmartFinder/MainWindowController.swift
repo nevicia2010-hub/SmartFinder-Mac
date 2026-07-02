@@ -4,9 +4,10 @@ import SmartFinderCore
 final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     private let gridController = FileGridViewController()
     private let mountedVolumeProvider = MountedVolumeProvider()
-    private let pathField = NSTextField(labelWithString: "")
+    private let pathField = NSTextField(string: "")
     private let statusField = NSTextField(labelWithString: "")
     private let searchField = NSSearchField()
+    private let iconSizeSlider = NSSlider(value: 96, minValue: 64, maxValue: 180, target: nil, action: nil)
     private let backButton = NSButton(title: L10n.string("button.back", fallback: "Back"), target: nil, action: nil)
     private let forwardButton = NSButton(title: L10n.string("button.forward", fallback: "Forward"), target: nil, action: nil)
     private let upButton = NSButton(title: L10n.string("button.up", fallback: "Up"), target: nil, action: nil)
@@ -110,10 +111,47 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
 
         pathField.lineBreakMode = .byTruncatingMiddle
         pathField.font = .systemFont(ofSize: 12)
+        pathField.isEditable = true
+        pathField.isSelectable = true
+        pathField.bezelStyle = .roundedBezel
+        pathField.target = self
+        pathField.action = #selector(openPathFromField)
+
         searchField.delegate = self
         searchField.placeholderString = L10n.string("search.placeholder", fallback: "Search current folder")
 
-        let stack = NSStackView(views: [backButton, forwardButton, upButton, pathField, searchField])
+        let refreshButton = toolbarIconButton(
+            symbolName: "arrow.clockwise",
+            fallbackTitle: L10n.string("toolbar.refresh", fallback: "Refresh"),
+            action: #selector(refreshCurrentFolder)
+        )
+        let newFolderButton = toolbarIconButton(
+            symbolName: "folder.badge.plus",
+            fallbackTitle: L10n.string("toolbar.newFolder", fallback: "New Folder"),
+            action: #selector(createFolder)
+        )
+        let revealButton = toolbarIconButton(
+            symbolName: "finder",
+            fallbackTitle: L10n.string("toolbar.revealInFinder", fallback: "Reveal in Finder"),
+            action: #selector(revealInFinder)
+        )
+
+        iconSizeSlider.target = self
+        iconSizeSlider.action = #selector(iconSizeChanged(_:))
+        iconSizeSlider.toolTip = L10n.string("toolbar.iconSize", fallback: "Icon Size")
+        iconSizeSlider.widthAnchor.constraint(equalToConstant: 110).isActive = true
+
+        let stack = NSStackView(views: [
+            backButton,
+            forwardButton,
+            upButton,
+            refreshButton,
+            newFolderButton,
+            revealButton,
+            pathField,
+            searchField,
+            iconSizeSlider
+        ])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 8
@@ -121,6 +159,20 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         pathField.setContentHuggingPriority(.defaultLow, for: .horizontal)
         searchField.widthAnchor.constraint(equalToConstant: 220).isActive = true
         return stack
+    }
+
+    private func toolbarIconButton(symbolName: String, fallbackTitle: String, action: Selector) -> NSButton {
+        let button = NSButton(title: "", target: self, action: action)
+        button.toolTip = fallbackTitle
+        button.bezelStyle = .texturedRounded
+        button.imagePosition = .imageOnly
+        button.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: fallbackTitle)
+        if button.image == nil {
+            button.title = fallbackTitle
+            button.imagePosition = .noImage
+        }
+        button.widthAnchor.constraint(greaterThanOrEqualToConstant: 32).isActive = true
+        return button
     }
 
     private func makeSidebar() -> NSView {
@@ -273,7 +325,43 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     }
 
     func controlTextDidChange(_ obj: Notification) {
-        gridController.applyFilter(searchField.stringValue)
+        if obj.object as? NSSearchField === searchField {
+            gridController.applyFilter(searchField.stringValue)
+        }
+    }
+
+    @objc private func refreshCurrentFolder() {
+        gridController.refresh()
+    }
+
+    @objc private func createFolder() {
+        gridController.createFolder()
+    }
+
+    @objc private func revealInFinder() {
+        gridController.revealSelectionInFinder()
+    }
+
+    @objc private func iconSizeChanged(_ sender: NSSlider) {
+        gridController.setIconSize(CGFloat(sender.doubleValue))
+    }
+
+    @objc private func openPathFromField() {
+        let path = NSString(string: pathField.stringValue).expandingTildeInPath
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+              isDirectory.boolValue else {
+            let alert = NSAlert()
+            alert.messageText = L10n.string("error.invalidPath.title", fallback: "Cannot Open Path")
+            alert.informativeText = L10n.format(
+                "error.invalidPath.message",
+                fallback: "The folder does not exist: %@",
+                path
+            )
+            alert.runModal()
+            return
+        }
+        navigate(to: URL(fileURLWithPath: path, isDirectory: true), recordHistory: true)
     }
 
     @objc private func goBack() {
