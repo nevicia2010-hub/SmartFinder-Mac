@@ -17,6 +17,8 @@
 "status.items.one" = "%d elemento";
 "status.items.other" = "%d elementos";
 "status.selected" = ", %d seleccionado(s)";
+"status.selectedSize" = ", %@ seleccionados";
+"status.available" = ", %@ disponible";
 "error.cannotReadFolder" = "No se puede leer la carpeta: %@";
 "error.invalidPath.title" = "No se puede abrir la ruta";
 "error.invalidPath.message" = "La carpeta no existe: %@";
@@ -36,6 +38,8 @@
 "toolbar.sort.type" = "Tipo";
 "toolbar.sort.size" = "Tamaño";
 "toolbar.sort.modified" = "Modificado";
+"toolbar.sort.ascending" = "Ascendente";
+"toolbar.sort.descending" = "Descendente";
 
 "category.folder" = "Carpeta";
 "category.image" = "Imagen";
@@ -74,6 +78,7 @@
 "menu.rename" = "Renombrar";
 "menu.moveToTrash" = "Mover a la papelera";
 "menu.copy" = "Copiar";
+"menu.copyName" = "Copiar nombre";
 "menu.copyTo" = "Copiar a...";
 "menu.moveTo" = "Mover a...";
 "menu.copyPath" = "Copiar ruta";

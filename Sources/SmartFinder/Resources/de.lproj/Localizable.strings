@@ -17,6 +17,8 @@
 "status.items.one" = "%d Objekt";
 "status.items.other" = "%d Objekte";
 "status.selected" = ", %d ausgewählt";
+"status.selectedSize" = ", %@ Auswahlgröße";
+"status.available" = ", %@ verfügbar";
 "error.cannotReadFolder" = "Ordner kann nicht gelesen werden: %@";
 "error.invalidPath.title" = "Pfad kann nicht geöffnet werden";
 "error.invalidPath.message" = "Der Ordner existiert nicht: %@";
@@ -36,6 +38,8 @@
 "toolbar.sort.type" = "Typ";
 "toolbar.sort.size" = "Größe";
 "toolbar.sort.modified" = "Geändert";
+"toolbar.sort.ascending" = "Aufsteigend";
+"toolbar.sort.descending" = "Absteigend";
 
 "category.folder" = "Ordner";
 "category.image" = "Bild";
@@ -74,6 +78,7 @@
 "menu.rename" = "Umbenennen";
 "menu.moveToTrash" = "In den Papierkorb legen";
 "menu.copy" = "Kopieren";
+"menu.copyName" = "Namen kopieren";
 "menu.copyTo" = "Kopieren nach...";
 "menu.moveTo" = "Bewegen nach...";
 "menu.copyPath" = "Pfad kopieren";

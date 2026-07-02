@@ -17,6 +17,8 @@
 "status.items.one" = "%d項目";
 "status.items.other" = "%d項目";
 "status.selected" = "、%d項目を選択";
+"status.selectedSize" = "、選択サイズ %@";
+"status.available" = "、空き %@";
 "error.cannotReadFolder" = "フォルダを読み込めません: %@";
 "error.invalidPath.title" = "パスを開けません";
 "error.invalidPath.message" = "フォルダが存在しません: %@";
@@ -36,6 +38,8 @@
 "toolbar.sort.type" = "種類";
 "toolbar.sort.size" = "サイズ";
 "toolbar.sort.modified" = "変更日";
+"toolbar.sort.ascending" = "昇順";
+"toolbar.sort.descending" = "降順";
 
 "category.folder" = "フォルダ";
 "category.image" = "画像";
@@ -74,6 +78,7 @@
 "menu.rename" = "名前を変更";
 "menu.moveToTrash" = "ゴミ箱に入れる";
 "menu.copy" = "コピー";
+"menu.copyName" = "名前をコピー";
 "menu.copyTo" = "コピー先...";
 "menu.moveTo" = "移動先...";
 "menu.copyPath" = "パスをコピー";

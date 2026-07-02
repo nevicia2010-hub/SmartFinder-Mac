@@ -8,6 +8,11 @@ enum FileSortMode: Equatable {
     case modified
 }
 
+enum FileSortDirection: Equatable {
+    case ascending
+    case descending
+}
+
 enum FileViewMode: Equatable {
     case icon
     case list
@@ -72,6 +77,11 @@ final class SmartCollectionView: NSCollectionView {
         if flags.contains(.command),
            event.charactersIgnoringModifiers?.lowercased() == "i" {
             keyDelegate?.smartCollectionViewDidPressGetInfo()
+            return
+        }
+        if flags.contains(.command),
+           event.charactersIgnoringModifiers?.lowercased() == "y" {
+            keyDelegate?.smartCollectionViewDidPressSpace()
             return
         }
         if flags.contains(.command),
@@ -142,6 +152,11 @@ final class SmartTableView: NSTableView {
             return
         }
         if flags.contains(.command),
+           event.charactersIgnoringModifiers?.lowercased() == "y" {
+            keyDelegate?.smartCollectionViewDidPressSpace()
+            return
+        }
+        if flags.contains(.command),
            flags.contains(.shift),
            event.charactersIgnoringModifiers?.lowercased() == "n" {
             keyDelegate?.smartCollectionViewDidPressNewFolder()
@@ -194,6 +209,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private var filterText = ""
     private var iconSize: CGFloat = 96
     private var sortMode: FileSortMode = .name
+    private var sortDirection: FileSortDirection = .ascending
     private var viewMode: FileViewMode = .icon
     private var includesHiddenItems = false
     private var showsFileExtensions = true
@@ -215,6 +231,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         collectionView.allowsMultipleSelection = true
         collectionView.backgroundColors = [.controlBackgroundColor]
         collectionView.register(FileItemCell.self, forItemWithIdentifier: FileItemCell.reuseIdentifier)
+        collectionView.registerForDraggedTypes([.fileURL])
 
         collectionScrollView.hasVerticalScroller = true
         collectionScrollView.hasHorizontalScroller = false
@@ -269,6 +286,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         tableView.backgroundColor = .controlBackgroundColor
         tableView.rowHeight = 30
         tableView.intercellSpacing = NSSize(width: 0, height: 2)
+        tableView.registerForDraggedTypes([.fileURL])
 
         addTableColumn(identifier: "selectionCheckbox", titleKey: "", fallback: "", width: 34)
         addTableColumn(identifier: "name", titleKey: "toolbar.sort.name", fallback: "Name", width: 320)
@@ -362,6 +380,11 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     func setSortMode(_ mode: FileSortMode) {
         sortMode = mode
+        applyCurrentFilter()
+    }
+
+    func setSortDirection(_ direction: FileSortDirection) {
+        sortDirection = direction
         applyCurrentFilter()
     }
 
@@ -511,8 +534,99 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
     }
 
+    func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
+        let items: [FileItem]
+        if tableView === self.tableView {
+            items = displayedItems
+        } else if let columnIndex = columnIndex(for: tableView) {
+            items = itemsForColumn(at: columnIndex)
+        } else {
+            return nil
+        }
+
+        guard items.indices.contains(row) else {
+            return nil
+        }
+        return items[row].url as NSURL
+    }
+
+    func tableView(
+        _ tableView: NSTableView,
+        draggingSession session: NSDraggingSession,
+        sourceOperationMaskFor context: NSDraggingContext
+    ) -> NSDragOperation {
+        [.copy, .move]
+    }
+
+    func tableView(
+        _ tableView: NSTableView,
+        validateDrop info: NSDraggingInfo,
+        proposedRow row: Int,
+        proposedDropOperation dropOperation: NSTableView.DropOperation
+    ) -> NSDragOperation {
+        guard let targetURL = dropTargetDirectory(for: tableView, row: row, dropOperation: dropOperation),
+              canAcceptDrop(info, toDirectory: targetURL) else {
+            return []
+        }
+        return transferOperation(for: info) == .copy ? .copy : .move
+    }
+
+    func tableView(
+        _ tableView: NSTableView,
+        acceptDrop info: NSDraggingInfo,
+        row: Int,
+        dropOperation: NSTableView.DropOperation
+    ) -> Bool {
+        guard let targetURL = dropTargetDirectory(for: tableView, row: row, dropOperation: dropOperation) else {
+            return false
+        }
+        return performDrop(info, toDirectory: targetURL)
+    }
+
     func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
         displayedItems.count
+    }
+
+    func collectionView(_ collectionView: NSCollectionView, pasteboardWriterForItemAt indexPath: IndexPath) -> NSPasteboardWriting? {
+        guard displayedItems.indices.contains(indexPath.item) else {
+            return nil
+        }
+        return displayedItems[indexPath.item].url as NSURL
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        draggingSession session: NSDraggingSession,
+        sourceOperationMaskFor context: NSDraggingContext
+    ) -> NSDragOperation {
+        [.copy, .move]
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        validateDrop draggingInfo: NSDraggingInfo,
+        proposedIndexPath proposedDropIndexPath: AutoreleasingUnsafeMutablePointer<NSIndexPath>,
+        dropOperation proposedDropOperation: UnsafeMutablePointer<NSCollectionView.DropOperation>
+    ) -> NSDragOperation {
+        guard let targetURL = collectionDropTargetDirectory(
+            indexPath: proposedDropIndexPath.pointee as IndexPath?,
+            dropOperation: proposedDropOperation.pointee
+        ), canAcceptDrop(draggingInfo, toDirectory: targetURL) else {
+            return []
+        }
+        return transferOperation(for: draggingInfo) == .copy ? .copy : .move
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        acceptDrop draggingInfo: NSDraggingInfo,
+        indexPath: IndexPath,
+        dropOperation: NSCollectionView.DropOperation
+    ) -> Bool {
+        guard let targetURL = collectionDropTargetDirectory(indexPath: indexPath, dropOperation: dropOperation) else {
+            return false
+        }
+        return performDrop(draggingInfo, toDirectory: targetURL)
     }
 
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
@@ -759,22 +873,23 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         pasteboard.setString(paths.joined(separator: "\n"), forType: .string)
     }
 
+    func copySelectedNamesToPasteboard() {
+        let names = SelectionSummary.fileNames(for: selectedItems())
+        guard !names.isEmpty else {
+            return
+        }
+
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(names.joined(separator: "\n"), forType: .string)
+    }
+
     func copySelection(toDirectory directoryURL: URL) {
         let urls = selectedItems().map(\.url)
         guard !urls.isEmpty else {
             return
         }
-
-        do {
-            for url in urls {
-                try fileOperations.copy(url, toDirectory: directoryURL)
-            }
-            if currentFolderURL?.standardizedFileURL == directoryURL.standardizedFileURL {
-                refresh()
-            }
-        } catch {
-            showOperationError(error)
-        }
+        transfer(urls, toDirectory: directoryURL, operation: .copy)
     }
 
     func moveSelection(toDirectory directoryURL: URL) {
@@ -782,12 +897,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         guard !urls.isEmpty else {
             return
         }
+        transfer(urls, toDirectory: directoryURL, operation: .move)
+    }
 
+    func transfer(_ urls: [URL], toDirectory directoryURL: URL, operation: FileTransferOperation) {
         do {
-            for url in urls {
-                try fileOperations.move(url, toDirectory: directoryURL)
-            }
-            refresh()
+            try transferItems(urls, toDirectory: directoryURL, operation: operation)
         } catch {
             showOperationError(error)
         }
@@ -804,6 +919,113 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         } catch {
             showOperationError(error)
         }
+    }
+
+    private func transferItems(_ urls: [URL], toDirectory directoryURL: URL, operation: FileTransferOperation) throws {
+        let targetURL = directoryURL.standardizedFileURL
+        var changedCurrentFolder = currentFolderURL?.standardizedFileURL == targetURL
+
+        for url in urls {
+            if operation == .move && url.deletingLastPathComponent().standardizedFileURL == targetURL {
+                continue
+            }
+            _ = try fileOperations.transfer(url, toDirectory: directoryURL, operation: operation)
+            if url.deletingLastPathComponent().standardizedFileURL == currentFolderURL?.standardizedFileURL {
+                changedCurrentFolder = true
+            }
+        }
+
+        if changedCurrentFolder {
+            refresh()
+        }
+    }
+
+    private func performDrop(_ info: NSDraggingInfo, toDirectory directoryURL: URL) -> Bool {
+        let urls = fileURLs(from: info.draggingPasteboard)
+        guard !urls.isEmpty else {
+            return false
+        }
+
+        do {
+            try transferItems(urls, toDirectory: directoryURL, operation: transferOperation(for: info))
+            return true
+        } catch {
+            showOperationError(error)
+            return false
+        }
+    }
+
+    private func canAcceptDrop(_ info: NSDraggingInfo, toDirectory directoryURL: URL) -> Bool {
+        let urls = fileURLs(from: info.draggingPasteboard)
+        guard !urls.isEmpty else {
+            return false
+        }
+
+        let targetPath = directoryURL.standardizedFileURL.path
+        if urls.contains(where: { sourceURL in
+            let sourcePath = sourceURL.standardizedFileURL.path
+            return targetPath == sourcePath || targetPath.hasPrefix(sourcePath + "/")
+        }) {
+            return false
+        }
+
+        if transferOperation(for: info) == .move,
+           urls.allSatisfy({ $0.deletingLastPathComponent().standardizedFileURL == directoryURL.standardizedFileURL }) {
+            return false
+        }
+
+        return true
+    }
+
+    private func transferOperation(for info: NSDraggingInfo) -> FileTransferOperation {
+        if info.draggingSourceOperationMask.contains(.copy),
+           NSEvent.modifierFlags.contains(.option) {
+            return .copy
+        }
+        return .move
+    }
+
+    private func fileURLs(from pasteboard: NSPasteboard) -> [URL] {
+        let objects = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [NSURL] ?? []
+        return objects.map { $0 as URL }.filter(\.isFileURL)
+    }
+
+    private func collectionDropTargetDirectory(indexPath: IndexPath?, dropOperation: NSCollectionView.DropOperation) -> URL? {
+        if dropOperation == .on,
+           let indexPath,
+           displayedItems.indices.contains(indexPath.item) {
+            let item = displayedItems[indexPath.item]
+            if item.isDirectory {
+                return item.url
+            }
+        }
+        return currentFolderURL
+    }
+
+    private func dropTargetDirectory(for tableView: NSTableView, row: Int, dropOperation: NSTableView.DropOperation) -> URL? {
+        let items: [FileItem]
+        let defaultFolder: URL?
+
+        if tableView === self.tableView {
+            items = displayedItems
+            defaultFolder = currentFolderURL
+        } else if let columnIndex = columnIndex(for: tableView) {
+            items = itemsForColumn(at: columnIndex)
+            defaultFolder = columnFolders.indices.contains(columnIndex) ? columnFolders[columnIndex].url : currentFolderURL
+        } else {
+            return currentFolderURL
+        }
+
+        if dropOperation == .on,
+           items.indices.contains(row),
+           items[row].isDirectory {
+            return items[row].url
+        }
+
+        return defaultFolder
     }
 
     func compressSelection() {
@@ -908,6 +1130,14 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         createFolder()
     }
 
+    @objc private func createTextFileFromMenu() {
+        createTextFile(named: timestampedName(prefix: "Untitled", extensionPart: "txt"))
+    }
+
+    @objc private func createMarkdownFileFromMenu() {
+        createTextFile(named: timestampedName(prefix: "Untitled", extensionPart: "md"), contents: "# Notes\n")
+    }
+
     @objc private func renameFromMenu() {
         renameSelection()
     }
@@ -922,6 +1152,10 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     @objc private func copyPathFromMenu() {
         copySelectedPathsToPasteboard()
+    }
+
+    @objc private func copyNameFromMenu() {
+        copySelectedNamesToPasteboard()
     }
 
     @objc private func compressFromMenu() {
@@ -959,44 +1193,60 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                 return left.isDirectory && !right.isDirectory
             }
 
+            let result: ComparisonResult
             switch sortMode {
             case .name:
-                return compareByName(left, right)
+                result = nameComparison(left, right)
             case .type:
-                let leftType = typeSortKey(left)
-                let rightType = typeSortKey(right)
-                if leftType != rightType {
-                    return leftType.localizedStandardCompare(rightType) == .orderedAscending
-                }
-                return compareByName(left, right)
+                result = typeComparison(left, right)
             case .size:
-                if let leftSize = left.byteSize, let rightSize = right.byteSize, leftSize != rightSize {
-                    return leftSize < rightSize
-                }
-                if left.byteSize != nil && right.byteSize == nil {
-                    return true
-                }
-                if left.byteSize == nil && right.byteSize != nil {
-                    return false
-                }
-                return compareByName(left, right)
+                result = sizeComparison(left, right)
             case .modified:
-                if let leftDate = left.modifiedAt, let rightDate = right.modifiedAt, leftDate != rightDate {
-                    return leftDate > rightDate
-                }
-                if left.modifiedAt != nil && right.modifiedAt == nil {
-                    return true
-                }
-                if left.modifiedAt == nil && right.modifiedAt != nil {
-                    return false
-                }
-                return compareByName(left, right)
+                result = modifiedComparison(left, right)
             }
+            return sortDirection == .ascending
+                ? result == .orderedAscending
+                : result == .orderedDescending
         }
     }
 
     private func compareByName(_ left: FileItem, _ right: FileItem) -> Bool {
         left.name.localizedStandardCompare(right.name) == .orderedAscending
+    }
+
+    private func nameComparison(_ left: FileItem, _ right: FileItem) -> ComparisonResult {
+        left.name.localizedStandardCompare(right.name)
+    }
+
+    private func typeComparison(_ left: FileItem, _ right: FileItem) -> ComparisonResult {
+        let typeResult = typeSortKey(left).localizedStandardCompare(typeSortKey(right))
+        return typeResult == .orderedSame ? nameComparison(left, right) : typeResult
+    }
+
+    private func sizeComparison(_ left: FileItem, _ right: FileItem) -> ComparisonResult {
+        switch (left.byteSize, right.byteSize) {
+        case let (leftSize?, rightSize?) where leftSize != rightSize:
+            return leftSize < rightSize ? .orderedAscending : .orderedDescending
+        case (.some, nil):
+            return .orderedAscending
+        case (nil, .some):
+            return .orderedDescending
+        default:
+            return nameComparison(left, right)
+        }
+    }
+
+    private func modifiedComparison(_ left: FileItem, _ right: FileItem) -> ComparisonResult {
+        switch (left.modifiedAt, right.modifiedAt) {
+        case let (leftDate?, rightDate?) where leftDate != rightDate:
+            return leftDate < rightDate ? .orderedAscending : .orderedDescending
+        case (.some, nil):
+            return .orderedAscending
+        case (nil, .some):
+            return .orderedDescending
+        default:
+            return nameComparison(left, right)
+        }
     }
 
     private func typeSortKey(_ item: FileItem) -> String {
@@ -1156,6 +1406,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             table.rowHeight = 32
             table.intercellSpacing = NSSize(width: 0, height: 1)
             table.tag = index
+            table.registerForDraggedTypes([.fileURL])
 
             let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("columnName"))
             column.width = 260
@@ -1290,10 +1541,13 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         menu.addItem(menuItem("menu.getInfo", fallback: "Get Info", action: #selector(getInfoFromMenu), enabled: hasSelection))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.newFolder", fallback: "New Folder", action: #selector(createFolderFromMenu), enabled: currentFolderURL != nil))
+        menu.addItem(menuItem("menu.newTextFile", fallback: "New Text File", action: #selector(createTextFileFromMenu), enabled: currentFolderURL != nil))
+        menu.addItem(menuItem("menu.newMarkdownFile", fallback: "New Markdown File", action: #selector(createMarkdownFileFromMenu), enabled: currentFolderURL != nil))
         menu.addItem(menuItem("menu.rename", fallback: "Rename", action: #selector(renameFromMenu), enabled: selectedItems().count == 1))
         menu.addItem(menuItem("menu.moveToTrash", fallback: "Move to Trash", action: #selector(moveToTrashFromMenu), enabled: hasSelection))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.copy", fallback: "Copy", action: #selector(copyFromMenu), enabled: hasSelection))
+        menu.addItem(menuItem("menu.copyName", fallback: "Copy Name", action: #selector(copyNameFromMenu), enabled: hasSelection))
         menu.addItem(menuItem("menu.copyPath", fallback: "Copy Path", action: #selector(copyPathFromMenu), enabled: hasSelection))
         menu.addItem(menuItem("menu.compress", fallback: "Compress", action: #selector(compressFromMenu), enabled: hasSelection))
         menu.addItem(menuItem("menu.paste", fallback: "Paste", action: #selector(pasteFromMenu), enabled: currentFolderURL != nil))
@@ -1473,6 +1727,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         return trimmed.isEmpty ? nil : trimmed
     }
 
+    private func timestampedName(prefix: String, extensionPart: String) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return "\(prefix)-\(formatter.string(from: Date())).\(extensionPart)"
+    }
+
     private func showOperationError(_ error: Error) {
         let alert = NSAlert(error: error)
         alert.runModal()
@@ -1542,14 +1802,44 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func updateStatus(prefix: String? = nil) {
-        let selectedCount = selectedItems().count
+        let selectedItems = selectedItems()
+        let selectedCount = selectedItems.count
         let itemText = L10n.itemCount(displayedItems.count)
         let selectionText = selectedCount > 0 ? L10n.selectedCount(selectedCount) : ""
+        let selectedByteSize = SelectionSummary.totalFileByteSize(for: selectedItems)
+        let sizeText = selectedByteSize > 0
+            ? L10n.format(
+                "status.selectedSize",
+                fallback: ", %@ selected size",
+                byteFormatter.string(fromByteCount: selectedByteSize)
+            )
+            : ""
+        let availableText = currentFolderURL.flatMap(availableCapacityText(for:)).map {
+            L10n.format("status.available", fallback: ", %@ available", $0)
+        } ?? ""
         if let prefix {
-            onStatusChange?("\(prefix) \(itemText)\(selectionText)")
+            onStatusChange?("\(prefix) \(itemText)\(selectionText)\(sizeText)\(availableText)")
         } else {
-            onStatusChange?("\(itemText)\(selectionText)")
+            onStatusChange?("\(itemText)\(selectionText)\(sizeText)\(availableText)")
         }
-        onSelectionChange?(selectedItems())
+        onSelectionChange?(selectedItems)
+    }
+
+    private func availableCapacityText(for folderURL: URL) -> String? {
+        do {
+            let values = try folderURL.resourceValues(forKeys: [
+                .volumeAvailableCapacityForImportantUsageKey,
+                .volumeAvailableCapacityKey
+            ])
+            if let capacity = values.volumeAvailableCapacityForImportantUsage {
+                return byteFormatter.string(fromByteCount: capacity)
+            }
+            if let capacity = values.volumeAvailableCapacity {
+                return byteFormatter.string(fromByteCount: Int64(capacity))
+            }
+        } catch {
+            return nil
+        }
+        return nil
     }
 }

@@ -68,6 +68,16 @@ let movedFile = try fileOperations.move(movableFile, toDirectory: moveTargetDire
 expect(movedFile.deletingLastPathComponent() == moveTargetDirectory, "move to directory should place the item in the target folder")
 expect(!FileManager.default.fileExists(atPath: movableFile.path), "move to directory should remove the source item")
 expect(FileManager.default.fileExists(atPath: movedFile.path), "move to directory should create the destination item")
+let transferCopySource = operationsDirectory.appendingPathComponent("drag-copy.txt")
+try "drag-copy".write(to: transferCopySource, atomically: true, encoding: .utf8)
+let transferredCopy = try fileOperations.transfer(transferCopySource, toDirectory: moveTargetDirectory, operation: .copy)
+expect(FileManager.default.fileExists(atPath: transferCopySource.path), "copy transfer should preserve the source item")
+expect(FileManager.default.fileExists(atPath: transferredCopy.path), "copy transfer should create the destination item")
+let transferMoveSource = operationsDirectory.appendingPathComponent("drag-move.txt")
+try "drag-move".write(to: transferMoveSource, atomically: true, encoding: .utf8)
+let transferredMove = try fileOperations.transfer(transferMoveSource, toDirectory: moveTargetDirectory, operation: .move)
+expect(!FileManager.default.fileExists(atPath: transferMoveSource.path), "move transfer should remove the source item")
+expect(FileManager.default.fileExists(atPath: transferredMove.path), "move transfer should create the destination item")
 
 let visibleDirectoryFile = operationsDirectory.appendingPathComponent("visible.txt")
 let hiddenDirectoryFile = operationsDirectory.appendingPathComponent(".hidden.txt")
@@ -182,6 +192,13 @@ expect(
     labeledDirectoryItem?.finderLabelNumber == FinderTagColor.blue.labelNumber,
     "directory items should carry Finder label numbers for visible tag indicators"
 )
+let summaryItems = [
+    FileItem(url: URL(fileURLWithPath: "/tmp/a.txt"), name: "a.txt", isDirectory: false, category: .document, byteSize: 10),
+    FileItem(url: URL(fileURLWithPath: "/tmp/b.txt"), name: "b.txt", isDirectory: false, category: .document, byteSize: 15),
+    FileItem(url: URL(fileURLWithPath: "/tmp/folder", isDirectory: true), name: "folder", isDirectory: true, category: .folder, byteSize: nil)
+]
+expect(SelectionSummary.totalFileByteSize(for: summaryItems) == 25, "selection summary should total only known file byte sizes")
+expect(SelectionSummary.fileNames(for: summaryItems) == ["a.txt", "b.txt", "folder"], "selection summary should expose selected file names")
 
 var navigationHistory = NavigationHistory()
 let navA = URL(fileURLWithPath: "/tmp/A", isDirectory: true)

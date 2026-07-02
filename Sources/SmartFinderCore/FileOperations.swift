@@ -14,6 +14,11 @@ public enum FileOperationError: Error, LocalizedError {
     }
 }
 
+public enum FileTransferOperation: Equatable, Sendable {
+    case copy
+    case move
+}
+
 public final class FileOperations {
     private let fileManager: FileManager
 
@@ -54,6 +59,16 @@ public final class FileOperations {
         let destinationURL = uniqueDestinationURL(for: sourceURL, in: directoryURL)
         try fileManager.moveItem(at: sourceURL, to: destinationURL)
         return destinationURL
+    }
+
+    @discardableResult
+    public func transfer(_ sourceURL: URL, toDirectory directoryURL: URL, operation: FileTransferOperation) throws -> URL {
+        switch operation {
+        case .copy:
+            return try copy(sourceURL, toDirectory: directoryURL)
+        case .move:
+            return try move(sourceURL, toDirectory: directoryURL)
+        }
     }
 
     @discardableResult

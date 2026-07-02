@@ -17,6 +17,8 @@
 "status.items.one" = "%d item";
 "status.items.other" = "%d items";
 "status.selected" = ", %d selected";
+"status.selectedSize" = ", %@ selected size";
+"status.available" = ", %@ available";
 "error.cannotReadFolder" = "Cannot read folder: %@";
 "error.invalidPath.title" = "Cannot Open Path";
 "error.invalidPath.message" = "The folder does not exist: %@";
@@ -36,6 +38,8 @@
 "toolbar.sort.type" = "Type";
 "toolbar.sort.size" = "Size";
 "toolbar.sort.modified" = "Modified";
+"toolbar.sort.ascending" = "Ascending";
+"toolbar.sort.descending" = "Descending";
 
 "category.folder" = "Folder";
 "category.image" = "Image";
@@ -74,6 +78,7 @@
 "menu.rename" = "Rename";
 "menu.moveToTrash" = "Move to Trash";
 "menu.copy" = "Copy";
+"menu.copyName" = "Copy Name";
 "menu.copyTo" = "Copy To...";
 "menu.moveTo" = "Move To...";
 "menu.copyPath" = "Copy Path";

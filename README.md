@@ -32,6 +32,12 @@ The first version opens a folder in a Finder-like icon grid:
 - Column view follows the current path through parent folders and opens child columns with system icons only, avoiding document thumbnail generation.
 - A path breadcrumb bar lets you jump directly to parent folders.
 - Common window operations are available: refresh, new folder, rename, move to Trash, copy/paste, copy path, compress, reveal in Finder, Get Info, context menu, editable path field, and icon-size control.
+- Drag and drop supports Finder-style file moves by default and copies when holding Option.
+- Sidebar locations accept dragged files for quick move/copy into common folders or mounted volumes.
+- Context menus include New Folder, New Text File, New Markdown File, Copy Name, and Copy Path.
+- The status bar shows selected file byte size and available disk space without recursively scanning folders.
+- Quick Look works with Space and Command-Y for the current selection.
+- Sorting supports name, type, size, modified date, plus ascending or descending direction.
 - The interface follows the system language for English, Simplified Chinese, Traditional Chinese, Japanese, Korean, German, French, Spanish, Italian, and Portuguese.
 - Double-click opens files or enters folders.
 - Space opens Quick Look for the current selection.
@@ -72,13 +78,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.7.0.dmg`
+- `dist/SmartFinder-0.8.0.dmg`
 
 The app is ad-hoc signed for local use. It is not Apple Developer ID signed or notarized, so macOS may show the standard warning the first time it is opened on another machine.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.7.0.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.8.0.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 
@@ -97,6 +103,7 @@ SmartFinder is intentionally selective about content thumbnails:
 - Column view uses metadata and system icons only; it does not run the thumbnail pipeline.
 - The details pane uses file metadata and system icons, so it does not start a heavy preview database.
 - Toolbar menus are created on demand and operate on the current folder or current selection; SmartFinder does not run a full-disk indexer or pre-render document thumbnails.
+- Status size totals only selected regular files with known byte sizes; folders are not recursively scanned in the background.
 
 ## Localizations
 

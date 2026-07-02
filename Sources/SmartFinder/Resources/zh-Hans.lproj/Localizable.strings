@@ -17,6 +17,8 @@
 "status.items.one" = "%d 个项目";
 "status.items.other" = "%d 个项目";
 "status.selected" = "，已选择 %d 项";
+"status.selectedSize" = "，选中大小 %@";
+"status.available" = "，可用 %@";
 "error.cannotReadFolder" = "无法读取文件夹：%@";
 "error.invalidPath.title" = "无法打开路径";
 "error.invalidPath.message" = "文件夹不存在：%@";
@@ -36,6 +38,8 @@
 "toolbar.sort.type" = "类型";
 "toolbar.sort.size" = "大小";
 "toolbar.sort.modified" = "修改日期";
+"toolbar.sort.ascending" = "升序";
+"toolbar.sort.descending" = "降序";
 
 "category.folder" = "文件夹";
 "category.image" = "图片";
@@ -74,6 +78,7 @@
 "menu.rename" = "重命名";
 "menu.moveToTrash" = "移到废纸篓";
 "menu.copy" = "复制";
+"menu.copyName" = "复制文件名";
 "menu.copyTo" = "复制到...";
 "menu.moveTo" = "移动到...";
 "menu.copyPath" = "复制路径";

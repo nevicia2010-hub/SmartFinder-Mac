@@ -67,6 +67,51 @@ private final class FinderToolbarButton: NSButton {
     }
 }
 
+private final class SidebarDropButton: NSButton {
+    var onFileDrop: (([URL], FileTransferOperation) -> Bool)?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        registerForDraggedTypes([.fileURL])
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        registerForDraggedTypes([.fileURL])
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard !fileURLs(from: sender.draggingPasteboard).isEmpty else {
+            return []
+        }
+        return transferOperation(for: sender) == .copy ? .copy : .move
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let urls = fileURLs(from: sender.draggingPasteboard)
+        guard !urls.isEmpty else {
+            return false
+        }
+        return onFileDrop?(urls, transferOperation(for: sender)) ?? false
+    }
+
+    private func transferOperation(for info: NSDraggingInfo) -> FileTransferOperation {
+        if info.draggingSourceOperationMask.contains(.copy),
+           NSEvent.modifierFlags.contains(.option) {
+            return .copy
+        }
+        return .move
+    }
+
+    private func fileURLs(from pasteboard: NSPasteboard) -> [URL] {
+        let objects = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [NSURL] ?? []
+        return objects.map { $0 as URL }.filter(\.isFileURL)
+    }
+}
+
 final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSWindowDelegate {
     private let gridController = FileGridViewController()
     private let mountedVolumeProvider = MountedVolumeProvider()
@@ -99,6 +144,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private var breadcrumbURLs: [URL] = []
     private var navigationHistory = NavigationHistory()
     private var currentSortMode: FileSortMode = .name
+    private var currentSortDirection: FileSortDirection = .ascending
     private var currentViewMode: FileViewMode = .icon
     private var activeSharingPicker: NSSharingServicePicker?
     private var toolbarTopConstraint: NSLayoutConstraint?
@@ -520,6 +566,20 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         )
     }
 
+    private func sortDirectionMenuItem(
+        _ key: String,
+        fallback: String,
+        direction: FileSortDirection,
+        action: Selector
+    ) -> NSMenuItem {
+        menuItem(
+            key,
+            fallback: fallback,
+            action: action,
+            state: currentSortDirection == direction ? .on : .off
+        )
+    }
+
     private func makeSidebar() -> NSView {
         let container = NSVisualEffectView()
         container.material = .sidebar
@@ -608,7 +668,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         let index = sidebarURLs.count
         sidebarURLs.append(location.url)
 
-        let button = NSButton(title: location.name, target: self, action: #selector(openSidebarLocation(_:)))
+        let button = SidebarDropButton(title: location.name, target: self, action: #selector(openSidebarLocation(_:)))
         button.image = location.icon
         button.imagePosition = .imageLeading
         button.imageScaling = .scaleProportionallyDown
@@ -621,6 +681,9 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         button.setButtonType(.momentaryChange)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.heightAnchor.constraint(equalToConstant: 26).isActive = true
+        button.onFileDrop = { [weak self] urls, operation in
+            self?.dropFileURLs(urls, toSidebarLocationAt: index, operation: operation) ?? false
+        }
 
         if location.isEjectable {
             let row = NSView()
@@ -868,6 +931,19 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         menu.addItem(sortMenuItem("toolbar.sort.type", fallback: "Type", mode: .type, action: #selector(sortByType)))
         menu.addItem(sortMenuItem("toolbar.sort.size", fallback: "Size", mode: .size, action: #selector(sortBySize)))
         menu.addItem(sortMenuItem("toolbar.sort.modified", fallback: "Modified", mode: .modified, action: #selector(sortByModified)))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(sortDirectionMenuItem(
+            "toolbar.sort.ascending",
+            fallback: "Ascending",
+            direction: .ascending,
+            action: #selector(sortAscending)
+        ))
+        menu.addItem(sortDirectionMenuItem(
+            "toolbar.sort.descending",
+            fallback: "Descending",
+            direction: .descending,
+            action: #selector(sortDescending)
+        ))
         popUp(menu, from: sender)
     }
 
@@ -901,6 +977,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         menu.addItem(menuItem("menu.moveToTrash", fallback: "Move to Trash", action: #selector(moveSelectionToTrashFromToolbar), enabled: hasSelection))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.copy", fallback: "Copy", action: #selector(copySelectionFromToolbar), enabled: hasSelection))
+        menu.addItem(menuItem("menu.copyName", fallback: "Copy Name", action: #selector(copyNameFromToolbar), enabled: hasSelection))
         menu.addItem(menuItem("menu.copyTo", fallback: "Copy To...", action: #selector(copySelectionToFolderFromToolbar), enabled: hasSelection))
         menu.addItem(menuItem("menu.moveTo", fallback: "Move To...", action: #selector(moveSelectionToFolderFromToolbar), enabled: hasSelection))
         menu.addItem(menuItem("menu.copyPath", fallback: "Copy Path", action: #selector(copyPathFromToolbar), enabled: hasSelection))
@@ -994,9 +1071,22 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         setSortMode(.modified)
     }
 
+    @objc private func sortAscending() {
+        setSortDirection(.ascending)
+    }
+
+    @objc private func sortDescending() {
+        setSortDirection(.descending)
+    }
+
     private func setSortMode(_ mode: FileSortMode) {
         currentSortMode = mode
         gridController.setSortMode(mode)
+    }
+
+    private func setSortDirection(_ direction: FileSortDirection) {
+        currentSortDirection = direction
+        gridController.setSortDirection(direction)
     }
 
     @objc private func applyTagColorFromMenu(_ sender: NSMenuItem) {
@@ -1078,6 +1168,10 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
 
     @objc private func copyPathFromToolbar() {
         gridController.copySelectedPathsToPasteboard()
+    }
+
+    @objc private func copyNameFromToolbar() {
+        gridController.copySelectedNamesToPasteboard()
     }
 
     @objc private func compressSelectionFromToolbar() {
@@ -1162,6 +1256,14 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             return
         }
         navigate(to: sidebarURLs[sender.tag], recordHistory: true)
+    }
+
+    private func dropFileURLs(_ urls: [URL], toSidebarLocationAt index: Int, operation: FileTransferOperation) -> Bool {
+        guard sidebarURLs.indices.contains(index) else {
+            return false
+        }
+        gridController.transfer(urls, toDirectory: sidebarURLs[index], operation: operation)
+        return true
     }
 
     @objc private func openBreadcrumb(_ sender: NSButton) {

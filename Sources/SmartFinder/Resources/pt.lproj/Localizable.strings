@@ -17,6 +17,8 @@
 "status.items.one" = "%d item";
 "status.items.other" = "%d itens";
 "status.selected" = ", %d selecionados";
+"status.selectedSize" = ", %@ selecionados";
+"status.available" = ", %@ disponível";
 "error.cannotReadFolder" = "Não foi possível ler a pasta: %@";
 "error.invalidPath.title" = "Não é possível abrir o caminho";
 "error.invalidPath.message" = "A pasta não existe: %@";
@@ -36,6 +38,8 @@
 "toolbar.sort.type" = "Tipo";
 "toolbar.sort.size" = "Tamanho";
 "toolbar.sort.modified" = "Modificado";
+"toolbar.sort.ascending" = "Crescente";
+"toolbar.sort.descending" = "Decrescente";
 
 "category.folder" = "Pasta";
 "category.image" = "Imagem";
@@ -74,6 +78,7 @@
 "menu.rename" = "Mudar nome";
 "menu.moveToTrash" = "Mover para o Lixo";
 "menu.copy" = "Copiar";
+"menu.copyName" = "Copiar nome";
 "menu.copyTo" = "Copiar para...";
 "menu.moveTo" = "Mover para...";
 "menu.copyPath" = "Copiar caminho";

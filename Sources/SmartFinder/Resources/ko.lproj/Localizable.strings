@@ -17,6 +17,8 @@
 "status.items.one" = "%d개 항목";
 "status.items.other" = "%d개 항목";
 "status.selected" = ", %d개 선택됨";
+"status.selectedSize" = ", 선택 크기 %@";
+"status.available" = ", %@ 사용 가능";
 "error.cannotReadFolder" = "폴더를 읽을 수 없음: %@";
 "error.invalidPath.title" = "경로를 열 수 없음";
 "error.invalidPath.message" = "폴더가 존재하지 않음: %@";
@@ -36,6 +38,8 @@
 "toolbar.sort.type" = "유형";
 "toolbar.sort.size" = "크기";
 "toolbar.sort.modified" = "수정일";
+"toolbar.sort.ascending" = "오름차순";
+"toolbar.sort.descending" = "내림차순";
 
 "category.folder" = "폴더";
 "category.image" = "이미지";
@@ -74,6 +78,7 @@
 "menu.rename" = "이름 변경";
 "menu.moveToTrash" = "휴지통으로 이동";
 "menu.copy" = "복사";
+"menu.copyName" = "이름 복사";
 "menu.copyTo" = "다음으로 복사...";
 "menu.moveTo" = "다음으로 이동...";
 "menu.copyPath" = "경로 복사";
