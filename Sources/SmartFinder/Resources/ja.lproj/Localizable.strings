@@ -23,6 +23,7 @@
 "toolbar.newFolder" = "新規フォルダ";
 "toolbar.revealInFinder" = "Finderで表示";
 "toolbar.iconSize" = "アイコンサイズ";
+"toolbar.navigation" = "戻る / 進む";
 "toolbar.sort.toolTip" = "並べ替え";
 "toolbar.sort.name" = "名前";
 "toolbar.sort.type" = "種類";

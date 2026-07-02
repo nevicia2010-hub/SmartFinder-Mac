@@ -9,13 +9,15 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     private let searchField = NSSearchField()
     private let iconSizeSlider = NSSlider(value: 96, minValue: 64, maxValue: 180, target: nil, action: nil)
     private let sortPopup = NSPopUpButton()
-    private let backButton = NSButton(title: L10n.string("button.back", fallback: "Back"), target: nil, action: nil)
-    private let forwardButton = NSButton(title: L10n.string("button.forward", fallback: "Forward"), target: nil, action: nil)
-    private let upButton = NSButton(title: L10n.string("button.up", fallback: "Up"), target: nil, action: nil)
+    private let backForwardControl = NSSegmentedControl()
+    private lazy var upButton = toolbarIconButton(
+        symbolName: "chevron.up",
+        fallbackTitle: L10n.string("button.up", fallback: "Up"),
+        action: #selector(goUp)
+    )
 
     private var sidebarURLs: [URL] = []
-    private var history: [URL] = []
-    private var historyIndex = -1
+    private var navigationHistory = NavigationHistory()
 
     private struct SidebarLocation {
         let name: String
@@ -103,12 +105,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     }
 
     private func makeToolbar() -> NSView {
-        backButton.target = self
-        backButton.action = #selector(goBack)
-        forwardButton.target = self
-        forwardButton.action = #selector(goForward)
-        upButton.target = self
-        upButton.action = #selector(goUp)
+        configureBackForwardControl()
 
         pathField.lineBreakMode = .byTruncatingMiddle
         pathField.font = .systemFont(ofSize: 12)
@@ -144,8 +141,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         configureSortPopup()
 
         let stack = NSStackView(views: [
-            backButton,
-            forwardButton,
+            backForwardControl,
             upButton,
             refreshButton,
             newFolderButton,
@@ -162,6 +158,28 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         pathField.setContentHuggingPriority(.defaultLow, for: .horizontal)
         searchField.widthAnchor.constraint(equalToConstant: 220).isActive = true
         return stack
+    }
+
+    private func configureBackForwardControl() {
+        backForwardControl.segmentCount = 2
+        backForwardControl.trackingMode = .momentary
+        backForwardControl.segmentStyle = .texturedRounded
+        backForwardControl.target = self
+        backForwardControl.action = #selector(backForwardChanged(_:))
+        backForwardControl.toolTip = L10n.string("toolbar.navigation", fallback: "Back / Forward")
+        backForwardControl.setToolTip(L10n.string("button.back", fallback: "Back"), forSegment: 0)
+        backForwardControl.setToolTip(L10n.string("button.forward", fallback: "Forward"), forSegment: 1)
+        backForwardControl.setImage(
+            NSImage(systemSymbolName: "chevron.left", accessibilityDescription: L10n.string("button.back", fallback: "Back")),
+            forSegment: 0
+        )
+        backForwardControl.setImage(
+            NSImage(systemSymbolName: "chevron.right", accessibilityDescription: L10n.string("button.forward", fallback: "Forward")),
+            forSegment: 1
+        )
+        backForwardControl.setWidth(34, forSegment: 0)
+        backForwardControl.setWidth(34, forSegment: 1)
+        backForwardControl.widthAnchor.constraint(equalToConstant: 70).isActive = true
     }
 
     private func configureSortPopup() {
@@ -322,11 +340,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
 
     private func navigate(to url: URL, recordHistory: Bool) {
         if recordHistory {
-            if historyIndex < history.count - 1 {
-                history.removeLast(history.count - historyIndex - 1)
-            }
-            history.append(url)
-            historyIndex = history.count - 1
+            navigationHistory.record(url)
         }
         pathField.stringValue = url.path
         searchField.stringValue = ""
@@ -336,8 +350,8 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     }
 
     private func updateNavigationButtons() {
-        backButton.isEnabled = historyIndex > 0
-        forwardButton.isEnabled = historyIndex >= 0 && historyIndex < history.count - 1
+        backForwardControl.setEnabled(navigationHistory.canGoBack, forSegment: 0)
+        backForwardControl.setEnabled(navigationHistory.canGoForward, forSegment: 1)
         upButton.isEnabled = !pathField.stringValue.isEmpty && pathField.stringValue != "/"
     }
 
@@ -376,6 +390,17 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         }
     }
 
+    @objc private func backForwardChanged(_ sender: NSSegmentedControl) {
+        switch sender.selectedSegment {
+        case 0:
+            goBack()
+        case 1:
+            goForward()
+        default:
+            break
+        }
+    }
+
     @objc private func openPathFromField() {
         let path = NSString(string: pathField.stringValue).expandingTildeInPath
         var isDirectory: ObjCBool = false
@@ -395,19 +420,17 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     }
 
     @objc private func goBack() {
-        guard historyIndex > 0 else {
+        guard let url = navigationHistory.goBack() else {
             return
         }
-        historyIndex -= 1
-        navigate(to: history[historyIndex], recordHistory: false)
+        navigate(to: url, recordHistory: false)
     }
 
     @objc private func goForward() {
-        guard historyIndex < history.count - 1 else {
+        guard let url = navigationHistory.goForward() else {
             return
         }
-        historyIndex += 1
-        navigate(to: history[historyIndex], recordHistory: false)
+        navigate(to: url, recordHistory: false)
     }
 
     @objc private func goUp() {

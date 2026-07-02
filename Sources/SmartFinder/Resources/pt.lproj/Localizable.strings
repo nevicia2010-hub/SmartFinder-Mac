@@ -23,6 +23,7 @@
 "toolbar.newFolder" = "Nova pasta";
 "toolbar.revealInFinder" = "Mostrar no Finder";
 "toolbar.iconSize" = "Tamanho dos ícones";
+"toolbar.navigation" = "Voltar / Avançar";
 "toolbar.sort.toolTip" = "Ordenar";
 "toolbar.sort.name" = "Nome";
 "toolbar.sort.type" = "Tipo";

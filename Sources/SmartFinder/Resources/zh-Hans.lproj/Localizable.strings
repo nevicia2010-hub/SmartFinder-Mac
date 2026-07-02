@@ -23,6 +23,7 @@
 "toolbar.newFolder" = "新建文件夹";
 "toolbar.revealInFinder" = "在 Finder 中显示";
 "toolbar.iconSize" = "图标大小";
+"toolbar.navigation" = "后退 / 前进";
 "toolbar.sort.toolTip" = "排序";
 "toolbar.sort.name" = "名称";
 "toolbar.sort.type" = "类型";

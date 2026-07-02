@@ -23,6 +23,7 @@
 "toolbar.newFolder" = "Nueva carpeta";
 "toolbar.revealInFinder" = "Mostrar en Finder";
 "toolbar.iconSize" = "Tamaño de icono";
+"toolbar.navigation" = "Atrás / Adelante";
 "toolbar.sort.toolTip" = "Ordenar";
 "toolbar.sort.name" = "Nombre";
 "toolbar.sort.type" = "Tipo";

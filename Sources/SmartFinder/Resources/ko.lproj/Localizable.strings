@@ -23,6 +23,7 @@
 "toolbar.newFolder" = "새 폴더";
 "toolbar.revealInFinder" = "Finder에서 보기";
 "toolbar.iconSize" = "아이콘 크기";
+"toolbar.navigation" = "뒤로 / 앞으로";
 "toolbar.sort.toolTip" = "정렬";
 "toolbar.sort.name" = "이름";
 "toolbar.sort.type" = "유형";
