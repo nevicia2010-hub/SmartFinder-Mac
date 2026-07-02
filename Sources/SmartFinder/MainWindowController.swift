@@ -112,6 +112,26 @@ private final class SidebarDropButton: NSButton {
     }
 }
 
+private final class SmartFinderWindow: NSWindow {
+    var onKeyboardShortcut: ((FinderKeyboardShortcut) -> Bool)?
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if let shortcut = FinderKeyboardShortcut.resolve(event: event),
+           onKeyboardShortcut?(shortcut) == true {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if let shortcut = FinderKeyboardShortcut.resolve(event: event),
+           onKeyboardShortcut?(shortcut) == true {
+            return
+        }
+        super.keyDown(with: event)
+    }
+}
+
 final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSWindowDelegate {
     private let gridController = FileGridViewController()
     private let mountedVolumeProvider = MountedVolumeProvider()
@@ -160,7 +180,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     }
 
     init(startURL: URL) {
-        let window = NSWindow(
+        let window = SmartFinderWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 760),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
@@ -173,6 +193,9 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         window.isMovableByWindowBackground = true
         super.init(window: window)
         window.delegate = self
+        window.onKeyboardShortcut = { [weak self] shortcut in
+            self?.handleWindowKeyboardShortcut(shortcut) ?? false
+        }
 
         setupContent()
         navigate(to: startURL, recordHistory: true)
@@ -196,6 +219,9 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         }
         gridController.onSelectionChange = { [weak self] items in
             self?.detailsPane.update(selection: items)
+        }
+        gridController.onKeyboardShortcut = { [weak self] shortcut in
+            self?.handleWindowKeyboardShortcut(shortcut) ?? false
         }
 
         let contentView = NSView()
@@ -287,6 +313,45 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private func setFullScreenToolbarGuard(_ enabled: Bool) {
         toolbarTopConstraint?.constant = enabled ? CGFloat(FinderToolbarMetrics.fullScreenTopGuard) : 0
         window?.contentView?.layoutSubtreeIfNeeded()
+    }
+
+    private func handleWindowKeyboardShortcut(_ shortcut: FinderKeyboardShortcut) -> Bool {
+        switch shortcut {
+        case .quickLook:
+            gridController.quickLookSelection()
+        case .goBack:
+            goBack()
+        case .goForward:
+            goForward()
+        case .goUp:
+            goUp()
+        case .openSelection:
+            gridController.openSelection()
+        case .showIconView:
+            setViewMode(.icon)
+        case .showListView:
+            setViewMode(.list)
+        case .showColumnView:
+            setViewMode(.column)
+        case .focusSearch:
+            window?.makeFirstResponder(searchField)
+            searchField.selectText(nil)
+        case .copyPath:
+            gridController.copySelectedPathsToPasteboard()
+        case .refresh:
+            gridController.refresh()
+        case .getInfo:
+            gridController.showInfoForSelection()
+        case .newFolder:
+            gridController.createFolder()
+        case .renameSelection,
+             .moveToTrash,
+             .selectAll,
+             .copy,
+             .paste:
+            return false
+        }
+        return true
     }
 
     private func makeToolbar() -> NSView {

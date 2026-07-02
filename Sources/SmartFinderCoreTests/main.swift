@@ -233,6 +233,43 @@ expect(FinderToolbarMetrics.showsToolbarButtonLabels, "toolbar operation buttons
 expect(FinderToolbarMetrics.labeledButtonHeight >= 52, "labeled toolbar buttons should be tall enough for icon and text")
 expect(FinderToolbarMetrics.usesPreferredTextStyles, "interface text should use system preferred text styles where AppKit allows")
 
+expect(
+    FinderKeyboardShortcut.resolve(keyCode: 33, charactersIgnoringModifiers: "[", modifiers: [.command]) == .goBack,
+    "Command-[ should map to back navigation"
+)
+expect(
+    FinderKeyboardShortcut.resolve(keyCode: 30, charactersIgnoringModifiers: "]", modifiers: [.command]) == .goForward,
+    "Command-] should map to forward navigation"
+)
+expect(
+    FinderKeyboardShortcut.resolve(keyCode: 126, charactersIgnoringModifiers: nil, modifiers: [.command]) == .goUp,
+    "Command-Up should map to parent folder navigation"
+)
+expect(
+    FinderKeyboardShortcut.resolve(keyCode: 125, charactersIgnoringModifiers: nil, modifiers: [.command]) == .openSelection,
+    "Command-Down should map to opening the current selection"
+)
+expect(
+    FinderKeyboardShortcut.resolve(keyCode: 18, charactersIgnoringModifiers: "1", modifiers: [.command]) == .showIconView,
+    "Command-1 should map to icon view"
+)
+expect(
+    FinderKeyboardShortcut.resolve(keyCode: 19, charactersIgnoringModifiers: "2", modifiers: [.command]) == .showListView,
+    "Command-2 should map to list view"
+)
+expect(
+    FinderKeyboardShortcut.resolve(keyCode: 20, charactersIgnoringModifiers: "3", modifiers: [.command]) == .showColumnView,
+    "Command-3 should map to column view"
+)
+expect(
+    FinderKeyboardShortcut.resolve(keyCode: 3, charactersIgnoringModifiers: "f", modifiers: [.command]) == .focusSearch,
+    "Command-F should map to search focus"
+)
+expect(
+    FinderKeyboardShortcut.resolve(keyCode: 8, charactersIgnoringModifiers: "c", modifiers: [.command, .option]) == .copyPath,
+    "Option-Command-C should map to copying selected paths"
+)
+
 expect(SmartFinderCoreBootstrap.isAvailable, "core module should load")
 expect(category("/tmp/photo.jpg") == .image, "jpg should be image")
 expect(category("/tmp/photo.HEIC") == .image, "HEIC should be image")

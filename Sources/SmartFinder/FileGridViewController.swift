@@ -20,6 +20,7 @@ enum FileViewMode: Equatable {
 }
 
 protocol SmartCollectionViewKeyDelegate: AnyObject {
+    func smartCollectionViewDidPressShortcut(_ shortcut: FinderKeyboardShortcut)
     func smartCollectionViewDidPressSpace()
     func smartCollectionViewDidPressCommandA()
     func smartCollectionViewDidDoubleClick()
@@ -41,53 +42,8 @@ final class SmartCollectionView: NSCollectionView {
     }
 
     override func keyDown(with event: NSEvent) {
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if event.keyCode == 49 {
-            keyDelegate?.smartCollectionViewDidPressSpace()
-            return
-        }
-        if event.keyCode == 36 {
-            keyDelegate?.smartCollectionViewDidPressReturn()
-            return
-        }
-        if event.keyCode == 51 || event.keyCode == 117 {
-            keyDelegate?.smartCollectionViewDidPressMoveToTrash()
-            return
-        }
-        if flags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "a" {
-            keyDelegate?.smartCollectionViewDidPressCommandA()
-            return
-        }
-        if flags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "c" {
-            keyDelegate?.smartCollectionViewDidPressCopy()
-            return
-        }
-        if flags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "v" {
-            keyDelegate?.smartCollectionViewDidPressPaste()
-            return
-        }
-        if flags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "r" {
-            keyDelegate?.smartCollectionViewDidPressRefresh()
-            return
-        }
-        if flags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "i" {
-            keyDelegate?.smartCollectionViewDidPressGetInfo()
-            return
-        }
-        if flags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "y" {
-            keyDelegate?.smartCollectionViewDidPressSpace()
-            return
-        }
-        if flags.contains(.command),
-           flags.contains(.shift),
-           event.charactersIgnoringModifiers?.lowercased() == "n" {
-            keyDelegate?.smartCollectionViewDidPressNewFolder()
+        if let shortcut = FinderKeyboardShortcut.resolve(event: event) {
+            keyDelegate?.smartCollectionViewDidPressShortcut(shortcut)
             return
         }
         super.keyDown(with: event)
@@ -113,53 +69,8 @@ final class SmartTableView: NSTableView {
     }
 
     override func keyDown(with event: NSEvent) {
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if event.keyCode == 49 {
-            keyDelegate?.smartCollectionViewDidPressSpace()
-            return
-        }
-        if event.keyCode == 36 {
-            keyDelegate?.smartCollectionViewDidPressReturn()
-            return
-        }
-        if event.keyCode == 51 || event.keyCode == 117 {
-            keyDelegate?.smartCollectionViewDidPressMoveToTrash()
-            return
-        }
-        if flags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "a" {
-            keyDelegate?.smartCollectionViewDidPressCommandA()
-            return
-        }
-        if flags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "c" {
-            keyDelegate?.smartCollectionViewDidPressCopy()
-            return
-        }
-        if flags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "v" {
-            keyDelegate?.smartCollectionViewDidPressPaste()
-            return
-        }
-        if flags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "r" {
-            keyDelegate?.smartCollectionViewDidPressRefresh()
-            return
-        }
-        if flags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "i" {
-            keyDelegate?.smartCollectionViewDidPressGetInfo()
-            return
-        }
-        if flags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "y" {
-            keyDelegate?.smartCollectionViewDidPressSpace()
-            return
-        }
-        if flags.contains(.command),
-           flags.contains(.shift),
-           event.charactersIgnoringModifiers?.lowercased() == "n" {
-            keyDelegate?.smartCollectionViewDidPressNewFolder()
+        if let shortcut = FinderKeyboardShortcut.resolve(event: event) {
+            keyDelegate?.smartCollectionViewDidPressShortcut(shortcut)
             return
         }
         super.keyDown(with: event)
@@ -181,6 +92,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     var onOpenFolder: ((URL) -> Void)?
     var onStatusChange: ((String) -> Void)?
     var onSelectionChange: (([FileItem]) -> Void)?
+    var onKeyboardShortcut: ((FinderKeyboardShortcut) -> Bool)?
 
     private let directoryStore = DirectoryStore()
     private let fileOperations = FileOperations()
@@ -695,6 +607,35 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     func collectionView(_ collectionView: NSCollectionView, didDeselectItemsAt indexPaths: Set<IndexPath>) {
         updateStatus()
+    }
+
+    func smartCollectionViewDidPressShortcut(_ shortcut: FinderKeyboardShortcut) {
+        switch shortcut {
+        case .quickLook:
+            smartCollectionViewDidPressSpace()
+        case .renameSelection:
+            smartCollectionViewDidPressReturn()
+        case .moveToTrash:
+            smartCollectionViewDidPressMoveToTrash()
+        case .selectAll:
+            smartCollectionViewDidPressCommandA()
+        case .copy:
+            smartCollectionViewDidPressCopy()
+        case .paste:
+            smartCollectionViewDidPressPaste()
+        case .refresh:
+            smartCollectionViewDidPressRefresh()
+        case .getInfo:
+            smartCollectionViewDidPressGetInfo()
+        case .newFolder:
+            smartCollectionViewDidPressNewFolder()
+        case .openSelection:
+            openSelection()
+        case .copyPath:
+            copySelectedPathsToPasteboard()
+        case .goBack, .goForward, .goUp, .showIconView, .showListView, .showColumnView, .focusSearch:
+            _ = onKeyboardShortcut?(shortcut)
+        }
     }
 
     func smartCollectionViewDidPressSpace() {
