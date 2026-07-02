@@ -52,6 +52,13 @@
 "menu.display.mediumIcons" = "Medium Icons";
 "menu.display.largeIcons" = "Large Icons";
 "menu.tags.add" = "Add Tag...";
+"menu.tags.red" = "Red";
+"menu.tags.orange" = "Orange";
+"menu.tags.yellow" = "Yellow";
+"menu.tags.green" = "Green";
+"menu.tags.blue" = "Blue";
+"menu.tags.purple" = "Purple";
+"menu.tags.gray" = "Gray";
 "menu.tags.clear" = "Clear Tags";
 "menu.open" = "Open";
 "menu.quickLook" = "Quick Look";

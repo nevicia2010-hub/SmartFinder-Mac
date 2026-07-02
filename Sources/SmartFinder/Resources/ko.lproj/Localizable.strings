@@ -52,6 +52,13 @@
 "menu.display.mediumIcons" = "중간 아이콘";
 "menu.display.largeIcons" = "큰 아이콘";
 "menu.tags.add" = "태그 추가...";
+"menu.tags.red" = "빨간색";
+"menu.tags.orange" = "주황색";
+"menu.tags.yellow" = "노란색";
+"menu.tags.green" = "초록색";
+"menu.tags.blue" = "파란색";
+"menu.tags.purple" = "보라색";
+"menu.tags.gray" = "회색";
 "menu.tags.clear" = "태그 지우기";
 "menu.open" = "열기";
 "menu.quickLook" = "훑어보기";

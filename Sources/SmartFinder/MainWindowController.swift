@@ -353,6 +353,35 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         FinderToolbarButton.symbol(symbolName, description: description, enabled: enabled)
     }
 
+    private func tagColorImage(for color: FinderTagColor) -> NSImage {
+        let image = NSImage(size: NSSize(width: 12, height: 12))
+        image.lockFocus()
+        finderTagSwatchColor(for: color).setFill()
+        NSBezierPath(ovalIn: NSRect(x: 1, y: 1, width: 10, height: 10)).fill()
+        image.unlockFocus()
+        image.isTemplate = false
+        return image
+    }
+
+    private func finderTagSwatchColor(for color: FinderTagColor) -> NSColor {
+        switch color {
+        case .gray:
+            return NSColor.systemGray
+        case .green:
+            return NSColor.systemGreen
+        case .purple:
+            return NSColor.systemPurple
+        case .blue:
+            return NSColor.systemBlue
+        case .yellow:
+            return NSColor.systemYellow
+        case .red:
+            return NSColor.systemRed
+        case .orange:
+            return NSColor.systemOrange
+        }
+    }
+
     private func popUp(_ menu: NSMenu, from sender: NSButton) {
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 2), in: sender)
     }
@@ -369,6 +398,56 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         item.isEnabled = enabled
         item.state = state
         return item
+    }
+
+    private func tagColorMenuItem(_ color: FinderTagColor, enabled: Bool) -> NSMenuItem {
+        let item = menuItem(
+            tagColorLocalizationKey(for: color),
+            fallback: tagColorFallbackName(for: color),
+            action: #selector(applyTagColorFromMenu(_:)),
+            enabled: enabled
+        )
+        item.representedObject = color.labelNumber
+        item.image = tagColorImage(for: color)
+        return item
+    }
+
+    private func tagColorLocalizationKey(for color: FinderTagColor) -> String {
+        switch color {
+        case .gray:
+            return "menu.tags.gray"
+        case .green:
+            return "menu.tags.green"
+        case .purple:
+            return "menu.tags.purple"
+        case .blue:
+            return "menu.tags.blue"
+        case .yellow:
+            return "menu.tags.yellow"
+        case .red:
+            return "menu.tags.red"
+        case .orange:
+            return "menu.tags.orange"
+        }
+    }
+
+    private func tagColorFallbackName(for color: FinderTagColor) -> String {
+        switch color {
+        case .gray:
+            return "Gray"
+        case .green:
+            return "Green"
+        case .purple:
+            return "Purple"
+        case .blue:
+            return "Blue"
+        case .yellow:
+            return "Yellow"
+        case .red:
+            return "Red"
+        case .orange:
+            return "Orange"
+        }
     }
 
     private func sortMenuItem(_ key: String, fallback: String, mode: FileSortMode, action: Selector) -> NSMenuItem {
@@ -703,7 +782,14 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     @objc private func showTagMenu(_ sender: NSButton) {
         let hasSelection = gridController.selectedItemCount() > 0
         let menu = NSMenu()
-        menu.addItem(menuItem("menu.tags.add", fallback: "Add Tag...", action: #selector(addTag), enabled: hasSelection))
+        menu.addItem(tagColorMenuItem(.red, enabled: hasSelection))
+        menu.addItem(tagColorMenuItem(.orange, enabled: hasSelection))
+        menu.addItem(tagColorMenuItem(.yellow, enabled: hasSelection))
+        menu.addItem(tagColorMenuItem(.green, enabled: hasSelection))
+        menu.addItem(tagColorMenuItem(.blue, enabled: hasSelection))
+        menu.addItem(tagColorMenuItem(.purple, enabled: hasSelection))
+        menu.addItem(tagColorMenuItem(.gray, enabled: hasSelection))
+        menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.tags.clear", fallback: "Clear Tags", action: #selector(clearTags), enabled: hasSelection))
         popUp(menu, from: sender)
     }
@@ -790,15 +876,15 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         gridController.setSortMode(mode)
     }
 
-    @objc private func addTag() {
-        guard !gridController.selectedURLs().isEmpty else {
+    @objc private func applyTagColorFromMenu(_ sender: NSMenuItem) {
+        guard
+            let labelNumber = sender.representedObject as? Int,
+            let color = FinderTagColor(rawValue: labelNumber)
+        else {
             NSSound.beep()
             return
         }
-        guard let tagName = promptForTagName() else {
-            return
-        }
-        applyTag(named: tagName)
+        applyFinderLabelColor(color)
     }
 
     @objc private func clearTags() {
@@ -817,39 +903,15 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         }
     }
 
-    private func applyTag(named tagName: String) {
+    private func applyFinderLabelColor(_ color: FinderTagColor) {
         do {
             for url in gridController.selectedURLs() {
-                var tagNames = try fileTagStore.tagNames(for: url)
-                if !tagNames.contains(tagName) {
-                    tagNames.append(tagName)
-                }
-                try fileTagStore.setTagNames(tagNames, for: url)
+                try fileTagStore.setFinderLabelColor(color, for: url)
             }
             gridController.refresh()
         } catch {
             showOperationError(error)
         }
-    }
-
-    private func promptForTagName() -> String? {
-        let alert = NSAlert()
-        alert.messageText = L10n.string("dialog.tag.title", fallback: "Add Tag")
-        alert.informativeText = L10n.string("dialog.tag.message", fallback: "Enter a tag name for the selected files.")
-        alert.addButton(withTitle: L10n.string("dialog.ok", fallback: "OK"))
-        alert.addButton(withTitle: L10n.string("dialog.cancel", fallback: "Cancel"))
-
-        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
-        textField.stringValue = L10n.string("dialog.tag.defaultName", fallback: "Work")
-        alert.accessoryView = textField
-
-        let response = alert.runModal()
-        guard response == .alertFirstButtonReturn else {
-            return nil
-        }
-
-        let trimmed = textField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
     }
 
     private func showOperationError(_ error: Error) {

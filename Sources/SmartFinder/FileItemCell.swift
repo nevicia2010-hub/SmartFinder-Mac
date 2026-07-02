@@ -1,9 +1,11 @@
 import AppKit
+import SmartFinderCore
 
 final class FileItemCell: NSCollectionViewItem {
     static let reuseIdentifier = NSUserInterfaceItemIdentifier("FileItemCell")
 
     private let iconView = NSImageView()
+    private let tagIndicator = NSView()
     private let titleField = NSTextField(labelWithString: "")
     private let subtitleField = NSTextField(labelWithString: "")
     private var iconWidthConstraint: NSLayoutConstraint?
@@ -16,6 +18,11 @@ final class FileItemCell: NSCollectionViewItem {
 
         iconView.imageScaling = .scaleProportionallyUpOrDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        tagIndicator.wantsLayer = true
+        tagIndicator.layer?.cornerRadius = 4
+        tagIndicator.translatesAutoresizingMaskIntoConstraints = false
+        tagIndicator.isHidden = true
 
         titleField.alignment = .center
         titleField.lineBreakMode = .byTruncatingMiddle
@@ -31,6 +38,7 @@ final class FileItemCell: NSCollectionViewItem {
         subtitleField.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(iconView)
+        view.addSubview(tagIndicator)
         view.addSubview(titleField)
         view.addSubview(subtitleField)
 
@@ -42,6 +50,11 @@ final class FileItemCell: NSCollectionViewItem {
             iconView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             iconWidthConstraint!,
             iconHeightConstraint!,
+
+            tagIndicator.widthAnchor.constraint(equalToConstant: 8),
+            tagIndicator.heightAnchor.constraint(equalToConstant: 8),
+            tagIndicator.trailingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: -6),
+            tagIndicator.bottomAnchor.constraint(equalTo: iconView.bottomAnchor, constant: -6),
 
             titleField.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 6),
             titleField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 4),
@@ -56,6 +69,8 @@ final class FileItemCell: NSCollectionViewItem {
     override func prepareForReuse() {
         super.prepareForReuse()
         iconView.image = nil
+        tagIndicator.isHidden = true
+        tagIndicator.layer?.backgroundColor = nil
         titleField.stringValue = ""
         subtitleField.stringValue = ""
         representedObject = nil
@@ -69,12 +84,50 @@ final class FileItemCell: NSCollectionViewItem {
         }
     }
 
-    func configure(name: String, subtitle: String, image: NSImage, representedURL: URL, iconSize: CGFloat) {
+    func configure(
+        name: String,
+        subtitle: String,
+        image: NSImage,
+        representedURL: URL,
+        iconSize: CGFloat,
+        finderLabelNumber: Int
+    ) {
         representedObject = representedURL
         iconWidthConstraint?.constant = iconSize
         iconHeightConstraint?.constant = iconSize
         iconView.image = image
+        updateTagIndicator(finderLabelNumber: finderLabelNumber)
         titleField.stringValue = name
         subtitleField.stringValue = subtitle
+    }
+
+    private func updateTagIndicator(finderLabelNumber: Int) {
+        guard let color = FinderTagColor(rawValue: finderLabelNumber) else {
+            tagIndicator.isHidden = true
+            tagIndicator.layer?.backgroundColor = nil
+            return
+        }
+
+        tagIndicator.isHidden = false
+        tagIndicator.layer?.backgroundColor = swatchColor(for: color).cgColor
+    }
+
+    private func swatchColor(for color: FinderTagColor) -> NSColor {
+        switch color {
+        case .gray:
+            return .systemGray
+        case .green:
+            return .systemGreen
+        case .purple:
+            return .systemPurple
+        case .blue:
+            return .systemBlue
+        case .yellow:
+            return .systemYellow
+        case .red:
+            return .systemRed
+        case .orange:
+            return .systemOrange
+        }
     }
 }

@@ -52,6 +52,13 @@
 "menu.display.mediumIcons" = "Mittlere Symbole";
 "menu.display.largeIcons" = "Große Symbole";
 "menu.tags.add" = "Tag hinzufügen...";
+"menu.tags.red" = "Rot";
+"menu.tags.orange" = "Orange";
+"menu.tags.yellow" = "Gelb";
+"menu.tags.green" = "Grün";
+"menu.tags.blue" = "Blau";
+"menu.tags.purple" = "Lila";
+"menu.tags.gray" = "Grau";
 "menu.tags.clear" = "Tags löschen";
 "menu.open" = "Öffnen";
 "menu.quickLook" = "Übersicht";

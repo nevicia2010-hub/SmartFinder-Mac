@@ -7,6 +7,7 @@ public struct FileItem: Hashable {
     public let category: FileCategory
     public let byteSize: Int64?
     public let modifiedAt: Date?
+    public let finderLabelNumber: Int
 
     public init(
         url: URL,
@@ -14,7 +15,8 @@ public struct FileItem: Hashable {
         isDirectory: Bool,
         category: FileCategory,
         byteSize: Int64? = nil,
-        modifiedAt: Date? = nil
+        modifiedAt: Date? = nil,
+        finderLabelNumber: Int = 0
     ) {
         self.url = url
         self.name = name
@@ -22,5 +24,6 @@ public struct FileItem: Hashable {
         self.category = category
         self.byteSize = byteSize
         self.modifiedAt = modifiedAt
+        self.finderLabelNumber = finderLabelNumber
     }
 }

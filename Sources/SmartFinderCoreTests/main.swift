@@ -117,6 +117,22 @@ expect(writtenTags == ["Red", "Work"], "tag store should write and read Finder t
 try tagStore.clearTags(for: taggedFile)
 let clearedTags = try tagStore.tagNames(for: taggedFile)
 expect(clearedTags.isEmpty, "tag store should clear Finder tags")
+try tagStore.setFinderLabelColor(.red, for: taggedFile)
+let redLabelValues = try taggedFile.resourceValues(forKeys: [.labelNumberKey, .tagNamesKey])
+expect(redLabelValues.labelNumber == FinderTagColor.red.labelNumber, "tag store should write real Finder color labels")
+expect(redLabelValues.tagNames == ["Red"], "red Finder label should be visible through system tag names")
+try tagStore.clearFinderLabelColor(for: taggedFile)
+let clearedLabelValues = try taggedFile.resourceValues(forKeys: [.labelNumberKey, .tagNamesKey])
+expect(clearedLabelValues.labelNumber == 0, "clearing a Finder label should reset the system label number")
+let labeledDirectoryFile = operationsDirectory.appendingPathComponent("labeled-directory-item.txt")
+try "label-visible".write(to: labeledDirectoryFile, atomically: true, encoding: .utf8)
+try tagStore.setFinderLabelColor(.blue, for: labeledDirectoryFile)
+let labeledDirectoryItem = try DirectoryStore().loadItems(in: operationsDirectory)
+    .first { $0.url.standardizedFileURL.path == labeledDirectoryFile.standardizedFileURL.path }
+expect(
+    labeledDirectoryItem?.finderLabelNumber == FinderTagColor.blue.labelNumber,
+    "directory items should carry Finder label numbers for visible tag indicators"
+)
 
 var navigationHistory = NavigationHistory()
 let navA = URL(fileURLWithPath: "/tmp/A", isDirectory: true)

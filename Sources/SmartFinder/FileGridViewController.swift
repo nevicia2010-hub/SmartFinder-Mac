@@ -404,9 +404,23 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         let fallbackIcon = visualIconProvider.icon(for: item, size: iconSize)
 
         if let cached = thumbnailPipeline.cachedThumbnail(for: item.url) {
-            cell.configure(name: item.name, subtitle: subtitle, image: cached, representedURL: item.url, iconSize: iconSize)
+            cell.configure(
+                name: item.name,
+                subtitle: subtitle,
+                image: cached,
+                representedURL: item.url,
+                iconSize: iconSize,
+                finderLabelNumber: item.finderLabelNumber
+            )
         } else {
-            cell.configure(name: item.name, subtitle: subtitle, image: fallbackIcon, representedURL: item.url, iconSize: iconSize)
+            cell.configure(
+                name: item.name,
+                subtitle: subtitle,
+                image: fallbackIcon,
+                representedURL: item.url,
+                iconSize: iconSize,
+                finderLabelNumber: item.finderLabelNumber
+            )
         }
 
         if ThumbnailPipeline.isThumbnailEligible(item.category) {
@@ -416,7 +430,14 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                       cell?.representedObject as? URL == item.url else {
                     return
                 }
-                cell?.configure(name: item.name, subtitle: subtitle, image: image, representedURL: item.url, iconSize: self.iconSize)
+                cell?.configure(
+                    name: item.name,
+                    subtitle: subtitle,
+                    image: image,
+                    representedURL: item.url,
+                    iconSize: self.iconSize,
+                    finderLabelNumber: item.finderLabelNumber
+                )
             }
         }
 

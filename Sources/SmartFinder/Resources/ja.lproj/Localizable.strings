@@ -52,6 +52,13 @@
 "menu.display.mediumIcons" = "中アイコン";
 "menu.display.largeIcons" = "大きいアイコン";
 "menu.tags.add" = "タグを追加...";
+"menu.tags.red" = "赤";
+"menu.tags.orange" = "オレンジ";
+"menu.tags.yellow" = "黄";
+"menu.tags.green" = "緑";
+"menu.tags.blue" = "青";
+"menu.tags.purple" = "紫";
+"menu.tags.gray" = "グレー";
 "menu.tags.clear" = "タグを消去";
 "menu.open" = "開く";
 "menu.quickLook" = "クイックルック";

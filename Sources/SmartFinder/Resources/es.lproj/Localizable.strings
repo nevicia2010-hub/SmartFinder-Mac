@@ -52,6 +52,13 @@
 "menu.display.mediumIcons" = "Iconos medianos";
 "menu.display.largeIcons" = "Iconos grandes";
 "menu.tags.add" = "Añadir etiqueta...";
+"menu.tags.red" = "Rojo";
+"menu.tags.orange" = "Naranja";
+"menu.tags.yellow" = "Amarillo";
+"menu.tags.green" = "Verde";
+"menu.tags.blue" = "Azul";
+"menu.tags.purple" = "Morado";
+"menu.tags.gray" = "Gris";
 "menu.tags.clear" = "Borrar etiquetas";
 "menu.open" = "Abrir";
 "menu.quickLook" = "Vista rápida";

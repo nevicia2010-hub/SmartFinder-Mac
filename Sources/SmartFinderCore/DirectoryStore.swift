@@ -9,7 +9,8 @@ public final class DirectoryStore {
             .isHiddenKey,
             .localizedNameKey,
             .fileSizeKey,
-            .contentModificationDateKey
+            .contentModificationDateKey,
+            .labelNumberKey
         ]
 
         let urls = try FileManager.default.contentsOfDirectory(
@@ -27,7 +28,8 @@ public final class DirectoryStore {
                 isDirectory: isDirectory,
                 category: FileClassifier.category(for: url, isDirectory: isDirectory),
                 byteSize: values.fileSize.map(Int64.init),
-                modifiedAt: values.contentModificationDate
+                modifiedAt: values.contentModificationDate,
+                finderLabelNumber: values.labelNumber ?? 0
             )
         }
         .sorted { left, right in

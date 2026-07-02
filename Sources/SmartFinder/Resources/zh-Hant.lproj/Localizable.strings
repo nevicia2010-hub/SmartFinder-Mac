@@ -52,6 +52,13 @@
 "menu.display.mediumIcons" = "中圖示";
 "menu.display.largeIcons" = "大圖示";
 "menu.tags.add" = "加入標籤...";
+"menu.tags.red" = "紅色";
+"menu.tags.orange" = "橙色";
+"menu.tags.yellow" = "黃色";
+"menu.tags.green" = "綠色";
+"menu.tags.blue" = "藍色";
+"menu.tags.purple" = "紫色";
+"menu.tags.gray" = "灰色";
 "menu.tags.clear" = "清除標籤";
 "menu.open" = "開啟";
 "menu.quickLook" = "快速查看";
