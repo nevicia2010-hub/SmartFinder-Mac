@@ -1,0 +1,16 @@
+"button.back" = "返回";
+"button.forward" = "前进";
+"button.up" = "上级";
+"search.placeholder" = "搜索当前文件夹";
+
+"sidebar.home" = "主文件夹";
+"sidebar.desktop" = "桌面";
+"sidebar.downloads" = "下载";
+"sidebar.documents" = "文稿";
+"sidebar.pictures" = "图片";
+
+"status.loading" = "正在载入";
+"status.items.one" = "%d 个项目";
+"status.items.other" = "%d 个项目";
+"status.selected" = "，已选择 %d 项";
+"error.cannotReadFolder" = "无法读取文件夹：%@";

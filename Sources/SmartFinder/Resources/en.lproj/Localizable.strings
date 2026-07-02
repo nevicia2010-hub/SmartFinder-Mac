@@ -1,0 +1,16 @@
+"button.back" = "Back";
+"button.forward" = "Forward";
+"button.up" = "Up";
+"search.placeholder" = "Search current folder";
+
+"sidebar.home" = "Home";
+"sidebar.desktop" = "Desktop";
+"sidebar.downloads" = "Downloads";
+"sidebar.documents" = "Documents";
+"sidebar.pictures" = "Pictures";
+
+"status.loading" = "Loading";
+"status.items.one" = "%d item";
+"status.items.other" = "%d items";
+"status.selected" = ", %d selected";
+"error.cannotReadFolder" = "Cannot read folder: %@";

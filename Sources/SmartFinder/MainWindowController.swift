@@ -5,9 +5,9 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
     private let pathField = NSTextField(labelWithString: "")
     private let statusField = NSTextField(labelWithString: "")
     private let searchField = NSSearchField()
-    private let backButton = NSButton(title: "Back", target: nil, action: nil)
-    private let forwardButton = NSButton(title: "Forward", target: nil, action: nil)
-    private let upButton = NSButton(title: "Up", target: nil, action: nil)
+    private let backButton = NSButton(title: L10n.string("button.back", fallback: "Back"), target: nil, action: nil)
+    private let forwardButton = NSButton(title: L10n.string("button.forward", fallback: "Forward"), target: nil, action: nil)
+    private let upButton = NSButton(title: L10n.string("button.up", fallback: "Up"), target: nil, action: nil)
 
     private var sidebarURLs: [URL] = []
     private var history: [URL] = []
@@ -103,7 +103,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         pathField.lineBreakMode = .byTruncatingMiddle
         pathField.font = .systemFont(ofSize: 12)
         searchField.delegate = self
-        searchField.placeholderString = "Search current folder"
+        searchField.placeholderString = L10n.string("search.placeholder", fallback: "Search current folder")
 
         let stack = NSStackView(views: [backButton, forwardButton, upButton, pathField, searchField])
         stack.orientation = .horizontal
@@ -170,11 +170,11 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate {
         }
 
         return [
-            ("Home", home),
-            ("Desktop", first(.desktopDirectory) ?? home),
-            ("Downloads", first(.downloadsDirectory) ?? home),
-            ("Documents", first(.documentDirectory) ?? home),
-            ("Pictures", first(.picturesDirectory) ?? home)
+            (L10n.string("sidebar.home", fallback: "Home"), home),
+            (L10n.string("sidebar.desktop", fallback: "Desktop"), first(.desktopDirectory) ?? home),
+            (L10n.string("sidebar.downloads", fallback: "Downloads"), first(.downloadsDirectory) ?? home),
+            (L10n.string("sidebar.documents", fallback: "Documents"), first(.documentDirectory) ?? home),
+            (L10n.string("sidebar.pictures", fallback: "Pictures"), first(.picturesDirectory) ?? home)
         ]
     }
 

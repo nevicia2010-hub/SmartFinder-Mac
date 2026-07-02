@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "SmartFinder",
+    defaultLocalization: "en",
     platforms: [.macOS(.v13)],
     products: [
         .executable(name: "SmartFinder", targets: ["SmartFinder"]),
@@ -10,7 +11,11 @@ let package = Package(
     ],
     targets: [
         .target(name: "SmartFinderCore"),
-        .executableTarget(name: "SmartFinder", dependencies: ["SmartFinderCore"]),
+        .executableTarget(
+            name: "SmartFinder",
+            dependencies: ["SmartFinderCore"],
+            resources: [.process("Resources")]
+        ),
         .executableTarget(name: "SmartFinderCoreTests", dependencies: ["SmartFinderCore"])
     ]
 )

@@ -85,7 +85,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         allItems = []
         displayedItems = []
         collectionView.reloadData()
-        updateStatus(prefix: "Loading")
+        updateStatus(prefix: L10n.string("status.loading", fallback: "Loading"))
 
         DispatchQueue.global(qos: .userInitiated).async { [directoryStore] in
             let result = Result { try directoryStore.loadItems(in: folderURL) }
@@ -101,7 +101,13 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                     self.allItems = []
                     self.displayedItems = []
                     self.collectionView.reloadData()
-                    self.onStatusChange?("Cannot read folder: \(error.localizedDescription)")
+                    self.onStatusChange?(
+                        L10n.format(
+                            "error.cannotReadFolder",
+                            fallback: "Cannot read folder: %@",
+                            error.localizedDescription
+                        )
+                    )
                 }
             }
         }
@@ -202,8 +208,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     private func updateStatus(prefix: String? = nil) {
         let selectedCount = collectionView.selectionIndexPaths.count
-        let itemText = displayedItems.count == 1 ? "1 item" : "\(displayedItems.count) items"
-        let selectionText = selectedCount > 0 ? ", \(selectedCount) selected" : ""
+        let itemText = L10n.itemCount(displayedItems.count)
+        let selectionText = selectedCount > 0 ? L10n.selectedCount(selectedCount) : ""
         if let prefix {
             onStatusChange?("\(prefix) \(itemText)\(selectionText)")
         } else {

@@ -34,6 +34,13 @@ sed \
 
 plutil -lint "${APP_PATH}/Contents/Info.plist"
 
+if [[ -d "${PROJECT_ROOT}/Sources/SmartFinder/Resources" ]]; then
+    cp -R "${PROJECT_ROOT}/Sources/SmartFinder/Resources/." "${APP_PATH}/Contents/Resources/"
+    find "${APP_PATH}/Contents/Resources" -name "*.strings" -print0 | while IFS= read -r -d '' strings_file; do
+        plutil -lint "${strings_file}"
+    done
+fi
+
 echo "Ad-hoc signing ${APP_NAME}.app..."
 codesign --force --deep --sign - "${APP_PATH}"
 codesign --verify --deep --strict "${APP_PATH}"

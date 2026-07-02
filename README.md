@@ -8,6 +8,7 @@ The first version opens a folder in a Finder-like icon grid:
 - PDF and office documents show system type icons instead of generated content thumbnails.
 - Folders show folder icons.
 - Unknown files show system type icons.
+- The interface follows the system language for English and Simplified Chinese.
 - Double-click opens files or enters folders.
 - Space opens Quick Look for the current selection.
 
