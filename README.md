@@ -7,7 +7,7 @@ The first version opens a folder in a Finder-like icon grid:
 - Image and supported RAW photo files show real thumbnails.
 - Video files are thumbnail-eligible, so supported formats can show a first-frame preview.
 - PDF and office documents show system type icons instead of generated content thumbnails.
-- Documents, audio files, archives, and source/code text show clear visual type cards instead of blank white panels.
+- Common document, audio, archive, code, and unknown files keep their macOS system default icons.
 - Folders show folder icons.
 - Unknown files show system type icons.
 - File tiles include a compact type/size subtitle, such as `PDF - 2.4 MB` or `CR3 - 28 MB`.
@@ -54,13 +54,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.3.0.dmg`
+- `dist/SmartFinder-0.3.1.dmg`
 
 The app is ad-hoc signed for local use. It is not Apple Developer ID signed or notarized, so macOS may show the standard warning the first time it is opened on another machine.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.3.0.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.3.1.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 
@@ -73,7 +73,7 @@ Thumbnail generation still depends on macOS Quick Look and the RAW codecs availa
 SmartFinder is intentionally selective about content thumbnails:
 
 - Photos, RAW files, and supported videos can use real Quick Look thumbnails.
-- PDF, Office, audio, archive, code, and unknown files stay lightweight and readable with type-first icons.
+- PDF, Office, audio, archive, code, and unknown files stay lightweight and readable with macOS system icons plus type/size subtitles.
 - This keeps large mixed folders easier to scan without asking macOS to render every document page.
 
 ## Localizations
