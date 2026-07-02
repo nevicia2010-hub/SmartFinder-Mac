@@ -1,6 +1,10 @@
 # SmartFinder
 
-SmartFinder is a small macOS Finder Companion focused on predictable icon-view browsing. It follows familiar macOS patterns, but it is not a pixel-perfect Finder clone.
+SmartFinder is a native macOS folder browser for people who want Finder-like navigation with more predictable thumbnails.
+
+Finder can show file previews, but it does not offer a simple rule like "show thumbnails for photos, but keep PDFs, spreadsheets, archives, and code as clean system icons." SmartFinder fills that gap. It makes image, RAW photo, and video-heavy folders easier to scan while keeping mixed work folders lightweight and readable.
+
+SmartFinder is not a system Finder replacement. It does not replace the Desktop, file picker, Spotlight, iCloud Drive, or "Show in Finder" behavior. It is a companion window for folders where Finder's thumbnail behavior gets in the way.
 
 Requires macOS 13 Ventura or later.
 
@@ -8,7 +12,15 @@ Requires macOS 13 Ventura or later.
 
 The demo folder used for this screenshot is included at `demo/SmartFinderDemoFiles`.
 
-The first version opens a folder in a Finder-like icon grid:
+## What It Is For
+
+- Browse photo and RAW folders with real visual thumbnails.
+- Keep PDF, Office, archive, audio, code, and unknown files as familiar macOS system icons.
+- Work through external SSDs, camera-card dumps, project folders, and mixed document folders without asking macOS to render every document page.
+- Use familiar Finder-style actions: open folders, go back and forward, sort, tag, Quick Look, copy paths, compress files, reveal items in Finder, and move files between folders.
+- Keep memory and GPU use lower by avoiding a full-disk indexer and by not pre-rendering every document thumbnail.
+
+## What It Does
 
 - Image and supported RAW photo files show real thumbnails.
 - Video files are thumbnail-eligible, so supported formats can show a first-frame preview.
