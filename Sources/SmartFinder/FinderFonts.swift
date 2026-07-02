@@ -9,6 +9,10 @@ enum FinderFonts {
         preferred(.body, fallback: .systemFont(ofSize: 14))
     }
 
+    static var toolbarButtonLabel: NSFont {
+        preferred(.caption2, fallback: .systemFont(ofSize: 11))
+    }
+
     static var sidebarHeader: NSFont {
         preferred(.caption1, fallback: .systemFont(ofSize: 11, weight: .semibold))
     }

@@ -4,17 +4,19 @@ import SmartFinderCore
 private final class FinderToolbarButton: NSButton {
     private let symbolName: String
     private let fallbackTitle: String
+    private weak var captionField: NSTextField?
 
     init(symbolName: String, fallbackTitle: String, target: AnyObject?, action: Selector) {
         self.symbolName = symbolName
         self.fallbackTitle = fallbackTitle
         super.init(frame: .zero)
 
-        title = ""
         self.target = target
         self.action = action
         toolTip = fallbackTitle
         bezelStyle = .texturedRounded
+        alignment = .center
+        title = ""
         imagePosition = .imageOnly
         imageScaling = .scaleProportionallyUpOrDown
         refreshImage()
@@ -27,7 +29,13 @@ private final class FinderToolbarButton: NSButton {
     override var isEnabled: Bool {
         didSet {
             refreshImage()
+            updateCaptionColor()
         }
+    }
+
+    func attachCaption(_ field: NSTextField) {
+        captionField = field
+        updateCaptionColor()
     }
 
     private func refreshImage() {
@@ -40,6 +48,10 @@ private final class FinderToolbarButton: NSButton {
             title = fallbackTitle
             imagePosition = .noImage
         }
+    }
+
+    private func updateCaptionColor() {
+        captionField?.textColor = isEnabled ? .secondaryLabelColor : .disabledControlTextColor
     }
 
     static func symbol(_ symbolName: String, description: String, enabled: Bool) -> NSImage? {
@@ -257,17 +269,21 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
 
         let flexibleSpacer = NSView()
         flexibleSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let navigationControl = toolbarLabeledControl(
+            backForwardControl,
+            label: L10n.string("toolbar.navigation", fallback: "Back / Forward")
+        )
 
         let stack = NSStackView(views: [
-            backForwardControl,
-            upButton,
+            navigationControl,
+            toolbarLabeledButton(upButton, label: L10n.string("button.up", fallback: "Up")),
             toolbarTitleField,
             flexibleSpacer,
-            displayButton,
-            groupButton,
-            shareButton,
-            tagButton,
-            actionButton,
+            toolbarLabeledButton(displayButton, label: L10n.string("toolbar.display", fallback: "Display")),
+            toolbarLabeledButton(groupButton, label: L10n.string("toolbar.group", fallback: "Group")),
+            toolbarLabeledButton(shareButton, label: L10n.string("toolbar.share", fallback: "Share")),
+            toolbarLabeledButton(tagButton, label: L10n.string("toolbar.tags", fallback: "Tags")),
+            toolbarLabeledButton(actionButton, label: L10n.string("toolbar.actions", fallback: "Actions")),
             searchField,
             iconSizeSlider
         ])
@@ -347,6 +363,35 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         button.widthAnchor.constraint(greaterThanOrEqualToConstant: CGFloat(FinderToolbarMetrics.buttonWidth)).isActive = true
         button.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.buttonHeight)).isActive = true
         return button
+    }
+
+    private func toolbarLabeledButton(_ button: NSButton, label: String) -> NSView {
+        toolbarLabeledControl(button, label: label)
+    }
+
+    private func toolbarLabeledControl(_ control: NSView, label: String) -> NSView {
+        let labelField = NSTextField(labelWithString: label)
+        labelField.font = FinderFonts.toolbarButtonLabel
+        labelField.textColor = .secondaryLabelColor
+        labelField.alignment = .center
+        labelField.lineBreakMode = .byTruncatingTail
+        labelField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let stack = NSStackView(views: [control, labelField])
+        stack.orientation = .vertical
+        stack.alignment = .centerX
+        stack.spacing = 1
+        stack.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        let minimumWidth = max(
+            CGFloat(FinderToolbarMetrics.buttonWidth),
+            control == backForwardControl ? CGFloat(FinderToolbarMetrics.navigationSegmentWidth * 2) : 0
+        )
+        stack.widthAnchor.constraint(greaterThanOrEqualToConstant: minimumWidth).isActive = true
+        stack.heightAnchor.constraint(equalToConstant: CGFloat(FinderToolbarMetrics.labeledButtonHeight)).isActive = true
+        if let toolbarButton = control as? FinderToolbarButton {
+            toolbarButton.attachCaption(labelField)
+        }
+        return stack
     }
 
     private func toolbarSymbol(_ symbolName: String, description: String, enabled: Bool = true) -> NSImage? {
