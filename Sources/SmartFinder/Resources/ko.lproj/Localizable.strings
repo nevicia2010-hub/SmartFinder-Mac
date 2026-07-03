@@ -86,6 +86,7 @@
 "menu.newFolder" = "새 폴더";
 "menu.newTextFile" = "새 텍스트 파일";
 "menu.newMarkdownFile" = "새 Markdown 파일";
+"menu.newCSVFile" = "새 CSV 파일";
 "menu.rename" = "이름 변경";
 "menu.moveToTrash" = "휴지통으로 이동";
 "menu.copy" = "복사";
@@ -93,6 +94,8 @@
 "menu.copyTo" = "다음으로 복사...";
 "menu.moveTo" = "다음으로 이동...";
 "menu.copyPath" = "경로 복사";
+"menu.copyParentPath" = "상위 경로 복사";
+"menu.copyShellPath" = "셸 경로로 복사";
 "menu.compress" = "압축";
 "menu.paste" = "붙여넣기";
 "menu.revealInFinder" = "Finder에서 보기";

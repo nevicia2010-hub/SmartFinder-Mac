@@ -236,6 +236,26 @@ expect(
     emptyColumnLayout.documentWidth == 260 && emptyColumnLayout.documentHeight == 500,
     "column view layout should keep a minimum document area even before columns are available"
 )
+let adaptiveColumnWidths = ColumnViewWidthMetrics.widths(
+    forColumnTextWidths: [
+        [80, 140],
+        [420],
+        []
+    ],
+    minimumColumnWidth: 220,
+    maximumColumnWidth: 360,
+    textPadding: 58
+)
+expect(
+    adaptiveColumnWidths == [220, 360, 220],
+    "column view widths should expand for long names, clamp at a maximum, and keep empty columns usable"
+)
+let adaptiveColumnLayout = ColumnViewLayoutMetrics.layout(columnWidths: adaptiveColumnWidths, viewportHeight: 600)
+expect(
+    adaptiveColumnLayout.documentWidth == 800 &&
+    adaptiveColumnLayout.columnFrames.map { Int($0.x) } == [0, 220, 580],
+    "column view layout should place variable-width columns without overlap"
+)
 
 let infoFile = operationsDirectory.appendingPathComponent("info.pdf")
 try "pdf-data".write(to: infoFile, atomically: true, encoding: .utf8)
@@ -257,6 +277,46 @@ let dashedArchiveSource = operationsDirectory.appendingPathComponent("-dash.txt"
 try "dash".write(to: dashedArchiveSource, atomically: true, encoding: .utf8)
 let dashedArchiveURL = try fileOperations.compress([dashedArchiveSource], in: operationsDirectory)
 expect(FileManager.default.fileExists(atPath: dashedArchiveURL.path), "compress should handle names that begin with a dash")
+let firstTemplateFile = try fileOperations.createFile(fromTemplate: .plainText, in: operationsDirectory)
+let secondTemplateFile = try fileOperations.createFile(fromTemplate: .plainText, in: operationsDirectory)
+let csvTemplateFile = try fileOperations.createFile(fromTemplate: .csv, in: operationsDirectory)
+let csvTemplateContents = try String(contentsOf: csvTemplateFile, encoding: .utf8)
+expect(firstTemplateFile.lastPathComponent == "Untitled.txt", "text template should create a predictable default file name")
+expect(secondTemplateFile.lastPathComponent == "Untitled 2.txt", "text template should avoid overwriting existing template files")
+expect(
+    csvTemplateContents == "Column 1,Column 2\n",
+    "csv template should write starter csv contents"
+)
+expect(
+    FileTemplateCatalog.templates.map(\.kind) == [.plainText, .markdown, .csv],
+    "file template catalog should expose text, markdown, and csv templates"
+)
+
+let pathFormatURLs = [
+    URL(fileURLWithPath: "/Volumes/Photo Archive/Test File.txt"),
+    URL(fileURLWithPath: "/tmp/simple.md")
+]
+expect(
+    CopyPathFormatter.strings(for: pathFormatURLs, format: .fullPath) == [
+        "/Volumes/Photo Archive/Test File.txt",
+        "/tmp/simple.md"
+    ],
+    "copy path formatter should expose full paths"
+)
+expect(
+    CopyPathFormatter.strings(for: pathFormatURLs, format: .parentDirectory) == [
+        "/Volumes/Photo Archive",
+        "/tmp"
+    ],
+    "copy path formatter should expose parent directories"
+)
+expect(
+    CopyPathFormatter.strings(for: pathFormatURLs, format: .shellEscapedPath) == [
+        "'/Volumes/Photo Archive/Test File.txt'",
+        "/tmp/simple.md"
+    ],
+    "copy path formatter should shell-escape paths with spaces for Terminal use"
+)
 
 let tagStore = FileTagStore()
 let taggedFile = operationsDirectory.appendingPathComponent("tagged.txt")
@@ -385,6 +445,15 @@ expect(
 expect(
     menuSpecs.flatMap(\.items).contains { $0.action == .copyPath && $0.modifiers == [.command, .option] },
     "menu bar should expose Copy Path for users who do not know the shortcut"
+)
+expect(
+    menuSpecs.flatMap(\.items).contains { $0.action == .newCSVFile },
+    "menu bar should expose the csv file template"
+)
+expect(
+    menuSpecs.flatMap(\.items).contains { $0.action == .copyParentPath } &&
+    menuSpecs.flatMap(\.items).contains { $0.action == .copyShellPath },
+    "menu bar should expose enhanced copy-path formats"
 )
 
 expect(SmartFinderCoreBootstrap.isAvailable, "core module should load")

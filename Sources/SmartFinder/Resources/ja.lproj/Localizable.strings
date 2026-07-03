@@ -86,6 +86,7 @@
 "menu.newFolder" = "新規フォルダ";
 "menu.newTextFile" = "新規テキストファイル";
 "menu.newMarkdownFile" = "新規Markdownファイル";
+"menu.newCSVFile" = "新規CSVファイル";
 "menu.rename" = "名前を変更";
 "menu.moveToTrash" = "ゴミ箱に入れる";
 "menu.copy" = "コピー";
@@ -93,6 +94,8 @@
 "menu.copyTo" = "コピー先...";
 "menu.moveTo" = "移動先...";
 "menu.copyPath" = "パスをコピー";
+"menu.copyParentPath" = "親フォルダのパスをコピー";
+"menu.copyShellPath" = "Shell用パスをコピー";
 "menu.compress" = "圧縮";
 "menu.paste" = "ペースト";
 "menu.revealInFinder" = "Finderで表示";

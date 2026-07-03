@@ -433,9 +433,9 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         switch action {
         case .about, .quit:
             return true
-        case .newFolder, .newTextFile, .newMarkdownFile:
+        case .newFolder, .newTextFile, .newMarkdownFile, .newCSVFile:
             return hasCurrentFolder
-        case .openSelection, .quickLook, .getInfo, .moveToTrash, .compress, .copyName, .copyPath:
+        case .openSelection, .quickLook, .getInfo, .moveToTrash, .compress, .copyName, .copyPath, .copyParentPath, .copyShellPath:
             return hasSelection
         case .rename:
             return selectionCount == 1
@@ -482,6 +482,8 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             createTextFileFromToolbar()
         case .newMarkdownFile:
             createMarkdownFileFromToolbar()
+        case .newCSVFile:
+            createCSVFileFromToolbar()
         case .openSelection:
             openSelectionFromToolbar()
         case .quickLook:
@@ -500,6 +502,10 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             copyNameFromToolbar()
         case .copyPath:
             copyPathFromToolbar()
+        case .copyParentPath:
+            copyParentPathFromToolbar()
+        case .copyShellPath:
+            copyShellPathFromToolbar()
         case .find:
             window?.makeFirstResponder(searchField)
             searchField.selectText(nil)
@@ -1418,6 +1424,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         menu.addItem(menuItem("menu.newFolder", fallback: "New Folder", action: #selector(createFolder), enabled: canPaste))
         menu.addItem(menuItem("menu.newTextFile", fallback: "New Text File", action: #selector(createTextFileFromToolbar), enabled: canPaste))
         menu.addItem(menuItem("menu.newMarkdownFile", fallback: "New Markdown File", action: #selector(createMarkdownFileFromToolbar), enabled: canPaste))
+        menu.addItem(menuItem("menu.newCSVFile", fallback: "New CSV File", action: #selector(createCSVFileFromToolbar), enabled: canPaste))
         menu.addItem(menuItem("menu.rename", fallback: "Rename", action: #selector(renameSelectionFromToolbar), enabled: gridController.selectedItemCount() == 1))
         menu.addItem(menuItem("menu.moveToTrash", fallback: "Move to Trash", action: #selector(moveSelectionToTrashFromToolbar), enabled: hasSelection))
         menu.addItem(NSMenuItem.separator())
@@ -1426,6 +1433,8 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         menu.addItem(menuItem("menu.copyTo", fallback: "Copy To...", action: #selector(copySelectionToFolderFromToolbar), enabled: hasSelection))
         menu.addItem(menuItem("menu.moveTo", fallback: "Move To...", action: #selector(moveSelectionToFolderFromToolbar), enabled: hasSelection))
         menu.addItem(menuItem("menu.copyPath", fallback: "Copy Path", action: #selector(copyPathFromToolbar), enabled: hasSelection))
+        menu.addItem(menuItem("menu.copyParentPath", fallback: "Copy Parent Path", action: #selector(copyParentPathFromToolbar), enabled: hasSelection))
+        menu.addItem(menuItem("menu.copyShellPath", fallback: "Copy as Shell Path", action: #selector(copyShellPathFromToolbar), enabled: hasSelection))
         menu.addItem(menuItem("menu.compress", fallback: "Compress", action: #selector(compressSelectionFromToolbar), enabled: hasSelection))
         menu.addItem(menuItem("menu.paste", fallback: "Paste", action: #selector(pasteIntoFolderFromToolbar), enabled: canPaste))
         menu.addItem(NSMenuItem.separator())
@@ -1640,6 +1649,14 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         gridController.copySelectedPathsToPasteboard()
     }
 
+    @objc private func copyParentPathFromToolbar() {
+        gridController.copySelectedParentPathsToPasteboard()
+    }
+
+    @objc private func copyShellPathFromToolbar() {
+        gridController.copySelectedShellPathsToPasteboard()
+    }
+
     @objc private func copyNameFromToolbar() {
         gridController.copySelectedNamesToPasteboard()
     }
@@ -1657,11 +1674,15 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     }
 
     @objc private func createTextFileFromToolbar() {
-        gridController.createTextFile(named: uniqueTimestampedName(prefix: "Untitled", extensionPart: "txt"))
+        gridController.createFile(fromTemplate: .plainText)
     }
 
     @objc private func createMarkdownFileFromToolbar() {
-        gridController.createTextFile(named: uniqueTimestampedName(prefix: "Untitled", extensionPart: "md"), contents: "# Notes\n")
+        gridController.createFile(fromTemplate: .markdown)
+    }
+
+    @objc private func createCSVFileFromToolbar() {
+        gridController.createFile(fromTemplate: .csv)
     }
 
     private func chooseDestinationFolder() -> URL? {
@@ -1672,12 +1693,6 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         panel.prompt = L10n.string("dialog.chooseFolder.prompt", fallback: "Choose")
         panel.message = L10n.string("dialog.chooseFolder.message", fallback: "Choose a destination folder.")
         return panel.runModal() == .OK ? panel.url : nil
-    }
-
-    private func uniqueTimestampedName(prefix: String, extensionPart: String) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd-HHmmss"
-        return "\(prefix)-\(formatter.string(from: Date())).\(extensionPart)"
     }
 
     @objc private func openPathFromField() {

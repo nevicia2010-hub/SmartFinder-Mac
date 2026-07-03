@@ -6,6 +6,7 @@ public enum SmartFinderMenuAction: String, Equatable, Sendable {
     case newFolder
     case newTextFile
     case newMarkdownFile
+    case newCSVFile
     case openSelection
     case quickLook
     case getInfo
@@ -17,6 +18,8 @@ public enum SmartFinderMenuAction: String, Equatable, Sendable {
     case paste
     case copyName
     case copyPath
+    case copyParentPath
+    case copyShellPath
     case selectAll
     case find
     case goBack
@@ -112,6 +115,7 @@ public enum SmartFinderMenuBarSpecification {
             SmartFinderMenuItemSpecification(titleKey: "menu.newFolder", fallbackTitle: "New Folder", action: .newFolder, keyEquivalent: "n", modifiers: [.command, .shift]),
             SmartFinderMenuItemSpecification(titleKey: "menu.newTextFile", fallbackTitle: "New Text File", action: .newTextFile),
             SmartFinderMenuItemSpecification(titleKey: "menu.newMarkdownFile", fallbackTitle: "New Markdown File", action: .newMarkdownFile),
+            SmartFinderMenuItemSpecification(titleKey: "menu.newCSVFile", fallbackTitle: "New CSV File", action: .newCSVFile),
             .separator,
             SmartFinderMenuItemSpecification(titleKey: "menu.open", fallbackTitle: "Open", action: .openSelection, keyEquivalent: "o", modifiers: [.command]),
             SmartFinderMenuItemSpecification(titleKey: "menu.quickLook", fallbackTitle: "Quick Look", action: .quickLook, keyEquivalent: "y", modifiers: [.command]),
@@ -127,6 +131,8 @@ public enum SmartFinderMenuBarSpecification {
             SmartFinderMenuItemSpecification(titleKey: "menu.paste", fallbackTitle: "Paste", action: .paste, keyEquivalent: "v", modifiers: [.command]),
             SmartFinderMenuItemSpecification(titleKey: "menu.copyName", fallbackTitle: "Copy Name", action: .copyName),
             SmartFinderMenuItemSpecification(titleKey: "menu.copyPath", fallbackTitle: "Copy Path", action: .copyPath, keyEquivalent: "c", modifiers: [.command, .option]),
+            SmartFinderMenuItemSpecification(titleKey: "menu.copyParentPath", fallbackTitle: "Copy Parent Path", action: .copyParentPath),
+            SmartFinderMenuItemSpecification(titleKey: "menu.copyShellPath", fallbackTitle: "Copy as Shell Path", action: .copyShellPath),
             .separator,
             SmartFinderMenuItemSpecification(titleKey: "menu.selectAll", fallbackTitle: "Select All", action: .selectAll, keyEquivalent: "a", modifiers: [.command]),
             SmartFinderMenuItemSpecification(titleKey: "menu.find", fallbackTitle: "Find", action: .find, keyEquivalent: "f", modifiers: [.command])

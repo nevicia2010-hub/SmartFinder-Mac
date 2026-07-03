@@ -846,14 +846,26 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func copySelectedPathsToPasteboard() {
-        let paths = selectedItems().map(\.url.path)
-        guard !paths.isEmpty else {
+        copySelectedPathsToPasteboard(format: .fullPath)
+    }
+
+    func copySelectedParentPathsToPasteboard() {
+        copySelectedPathsToPasteboard(format: .parentDirectory)
+    }
+
+    func copySelectedShellPathsToPasteboard() {
+        copySelectedPathsToPasteboard(format: .shellEscapedPath)
+    }
+
+    private func copySelectedPathsToPasteboard(format: CopyPathFormat) {
+        let urls = selectedItems().map(\.url)
+        guard !urls.isEmpty else {
             return
         }
 
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.setString(paths.joined(separator: "\n"), forType: .string)
+        pasteboard.setString(CopyPathFormatter.joinedString(for: urls, format: format), forType: .string)
     }
 
     func copySelectedNamesToPasteboard() {
@@ -886,6 +898,19 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     func transfer(_ urls: [URL], toDirectory directoryURL: URL, operation: FileTransferOperation) {
         do {
             try transferItems(urls, toDirectory: directoryURL, operation: operation)
+        } catch {
+            showOperationError(error)
+        }
+    }
+
+    func createFile(fromTemplate kind: FileTemplateKind) {
+        guard let currentFolderURL else {
+            return
+        }
+
+        do {
+            try fileOperations.createFile(fromTemplate: kind, in: currentFolderURL)
+            refresh()
         } catch {
             showOperationError(error)
         }
@@ -1114,11 +1139,15 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     @objc private func createTextFileFromMenu() {
-        createTextFile(named: timestampedName(prefix: "Untitled", extensionPart: "txt"))
+        createFile(fromTemplate: .plainText)
     }
 
     @objc private func createMarkdownFileFromMenu() {
-        createTextFile(named: timestampedName(prefix: "Untitled", extensionPart: "md"), contents: "# Notes\n")
+        createFile(fromTemplate: .markdown)
+    }
+
+    @objc private func createCSVFileFromMenu() {
+        createFile(fromTemplate: .csv)
     }
 
     @objc private func renameFromMenu() {
@@ -1135,6 +1164,14 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     @objc private func copyPathFromMenu() {
         copySelectedPathsToPasteboard()
+    }
+
+    @objc private func copyParentPathFromMenu() {
+        copySelectedParentPathsToPasteboard()
+    }
+
+    @objc private func copyShellPathFromMenu() {
+        copySelectedShellPathsToPasteboard()
     }
 
     @objc private func copyNameFromMenu() {
@@ -1370,10 +1407,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
         columnTables = []
 
-        let columnWidth: CGFloat = 260
+        let columnWidths = preferredColumnWidths()
         let layout = ColumnViewLayoutMetrics.layout(
-            columnCount: columnFolders.count,
-            columnWidth: Double(columnWidth),
+            columnWidths: columnWidths.map(Double.init),
             viewportHeight: Double(columnScrollView.contentSize.height)
         )
         columnDocumentView.frame = NSRect(
@@ -1435,6 +1471,17 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
         selectColumnPathRows()
         scrollColumnViewToTrailingEdge()
+    }
+
+    private func preferredColumnWidths() -> [CGFloat] {
+        let attributes: [NSAttributedString.Key: Any] = [.font: FinderFonts.tableCell]
+        let columnTextWidths = columnFolders.indices.map { index in
+            itemsForColumn(at: index).map { item in
+                let suffix = item.isDirectory ? "  >" : ""
+                return Double(((displayName(for: item) + suffix) as NSString).size(withAttributes: attributes).width)
+            }
+        }
+        return ColumnViewWidthMetrics.widths(forColumnTextWidths: columnTextWidths).map { CGFloat($0) }
     }
 
     private func selectColumnPathRows() {
@@ -1635,12 +1682,15 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         menu.addItem(menuItem("menu.newFolder", fallback: "New Folder", action: #selector(createFolderFromMenu), enabled: currentFolderURL != nil))
         menu.addItem(menuItem("menu.newTextFile", fallback: "New Text File", action: #selector(createTextFileFromMenu), enabled: currentFolderURL != nil))
         menu.addItem(menuItem("menu.newMarkdownFile", fallback: "New Markdown File", action: #selector(createMarkdownFileFromMenu), enabled: currentFolderURL != nil))
+        menu.addItem(menuItem("menu.newCSVFile", fallback: "New CSV File", action: #selector(createCSVFileFromMenu), enabled: currentFolderURL != nil))
         menu.addItem(menuItem("menu.rename", fallback: "Rename", action: #selector(renameFromMenu), enabled: selectedItems().count == 1))
         menu.addItem(menuItem("menu.moveToTrash", fallback: "Move to Trash", action: #selector(moveToTrashFromMenu), enabled: hasSelection))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.copy", fallback: "Copy", action: #selector(copyFromMenu), enabled: hasSelection))
         menu.addItem(menuItem("menu.copyName", fallback: "Copy Name", action: #selector(copyNameFromMenu), enabled: hasSelection))
         menu.addItem(menuItem("menu.copyPath", fallback: "Copy Path", action: #selector(copyPathFromMenu), enabled: hasSelection))
+        menu.addItem(menuItem("menu.copyParentPath", fallback: "Copy Parent Path", action: #selector(copyParentPathFromMenu), enabled: hasSelection))
+        menu.addItem(menuItem("menu.copyShellPath", fallback: "Copy as Shell Path", action: #selector(copyShellPathFromMenu), enabled: hasSelection))
         menu.addItem(menuItem("menu.compress", fallback: "Compress", action: #selector(compressFromMenu), enabled: hasSelection))
         menu.addItem(menuItem("menu.paste", fallback: "Paste", action: #selector(pasteFromMenu), enabled: currentFolderURL != nil))
         menu.addItem(NSMenuItem.separator())
@@ -1817,12 +1867,6 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         window.makeFirstResponder(collectionView)
         let trimmed = textField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
-    }
-
-    private func timestampedName(prefix: String, extensionPart: String) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd-HHmmss"
-        return "\(prefix)-\(formatter.string(from: Date())).\(extensionPart)"
     }
 
     private func showOperationError(_ error: Error) {

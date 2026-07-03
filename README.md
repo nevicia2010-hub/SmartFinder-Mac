@@ -38,7 +38,7 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 - Finder-like toolbar menus provide display presets, grouping/sorting, system sharing, real Finder color tags, and common file actions.
 - Windows Explorer-style convenience toggles are available for hidden items, file name extensions, and item selection checkboxes.
 - A lightweight details pane can show selected item metadata without generating document thumbnails.
-- The Actions menu includes Copy To, Move To, New Text File, and New Markdown File for common folder work.
+- The Actions menu includes Copy To, Move To, New Text File, New Markdown File, and New CSV File for common folder work.
 - The tag menu writes real Finder color labels instead of text-only tags; tagged folders use the matching folder icon color, while tagged files keep their system icons with a compact color indicator.
 - The window uses a Finder-like full-height sidebar, transparent titlebar, compact breadcrumb row, and neutral toolbar symbols.
 - Toolbar symbols now follow Finder-like availability states: enabled controls are bright, while unavailable controls are dimmed.
@@ -52,11 +52,12 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 - Mounted external volumes appear in the Finder-style sidebar and refresh automatically when disks are mounted, unmounted, or renamed.
 - Icon view, list view, and lightweight column view are available from the Display menu.
 - Column view follows the current path through parent folders and opens child columns with system icons only, avoiding document thumbnail generation.
+- Column view adapts each column width to the visible file names, with a clamp to keep very long names from consuming the whole window.
 - A path breadcrumb bar lets you jump directly to parent folders.
 - Common window operations are available: refresh, new folder, rename, move to Trash, copy/paste, copy path, compress, reveal in Finder, Get Info, context menu, editable path field, and icon-size control.
 - Drag and drop supports Finder-style file moves by default and copies when holding Option.
 - Sidebar locations accept dragged files for quick move/copy into common folders or mounted volumes.
-- Context menus include New Folder, New Text File, New Markdown File, Copy Name, and Copy Path.
+- Context menus include New Folder, New Text File, New Markdown File, New CSV File, Copy Name, Copy Path, Copy Parent Path, and Copy as Shell Path.
 - The status bar shows selected file byte size and available disk space without recursively scanning folders.
 - Quick Look works with Space and Command-Y for the current selection.
 - Finder-style keyboard shortcuts include back/forward, parent folder, open selection, view switching, search focus, copy path, refresh, Get Info, and new folder.
@@ -102,13 +103,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.8.7.dmg`
+- `dist/SmartFinder-0.8.8.dmg`
 
 The app is ad-hoc signed for local use. It is not Apple Developer ID signed or notarized, so macOS may show the standard warning the first time it is opened on another machine.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.8.7.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.8.8.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 

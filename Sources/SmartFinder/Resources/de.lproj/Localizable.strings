@@ -86,6 +86,7 @@
 "menu.newFolder" = "Neuer Ordner";
 "menu.newTextFile" = "Neue Textdatei";
 "menu.newMarkdownFile" = "Neue Markdown-Datei";
+"menu.newCSVFile" = "Neue CSV-Datei";
 "menu.rename" = "Umbenennen";
 "menu.moveToTrash" = "In den Papierkorb legen";
 "menu.copy" = "Kopieren";
@@ -93,6 +94,8 @@
 "menu.copyTo" = "Kopieren nach...";
 "menu.moveTo" = "Bewegen nach...";
 "menu.copyPath" = "Pfad kopieren";
+"menu.copyParentPath" = "Übergeordneten Pfad kopieren";
+"menu.copyShellPath" = "Als Shell-Pfad kopieren";
 "menu.compress" = "Komprimieren";
 "menu.paste" = "Einfügen";
 "menu.revealInFinder" = "Im Finder anzeigen";

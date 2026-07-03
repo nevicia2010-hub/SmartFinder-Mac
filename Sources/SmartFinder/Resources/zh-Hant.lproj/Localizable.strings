@@ -86,6 +86,7 @@
 "menu.newFolder" = "新增資料夾";
 "menu.newTextFile" = "新增文字檔";
 "menu.newMarkdownFile" = "新增 Markdown 檔";
+"menu.newCSVFile" = "新增 CSV 檔";
 "menu.rename" = "重新命名";
 "menu.moveToTrash" = "移到垃圾桶";
 "menu.copy" = "拷貝";
@@ -93,6 +94,8 @@
 "menu.copyTo" = "拷貝到...";
 "menu.moveTo" = "移動到...";
 "menu.copyPath" = "拷貝路徑";
+"menu.copyParentPath" = "拷貝上層路徑";
+"menu.copyShellPath" = "拷貝為 Shell 路徑";
 "menu.compress" = "壓縮";
 "menu.paste" = "貼上";
 "menu.revealInFinder" = "在 Finder 中顯示";

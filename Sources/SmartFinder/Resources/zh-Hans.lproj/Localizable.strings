@@ -86,6 +86,7 @@
 "menu.newFolder" = "新建文件夹";
 "menu.newTextFile" = "新建文本文件";
 "menu.newMarkdownFile" = "新建 Markdown 文件";
+"menu.newCSVFile" = "新建 CSV 文件";
 "menu.rename" = "重命名";
 "menu.moveToTrash" = "移到废纸篓";
 "menu.copy" = "复制";
@@ -93,6 +94,8 @@
 "menu.copyTo" = "复制到...";
 "menu.moveTo" = "移动到...";
 "menu.copyPath" = "复制路径";
+"menu.copyParentPath" = "复制上级路径";
+"menu.copyShellPath" = "复制为 Shell 路径";
 "menu.compress" = "压缩";
 "menu.paste" = "粘贴";
 "menu.revealInFinder" = "在 Finder 中显示";

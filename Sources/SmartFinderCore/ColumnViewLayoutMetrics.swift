@@ -50,4 +50,62 @@ public enum ColumnViewLayoutMetrics {
             columnFrames: frames
         )
     }
+
+    public static func layout(
+        columnWidths: [Double],
+        viewportHeight: Double,
+        minimumDocumentHeight: Double = Self.minimumDocumentHeight
+    ) -> ColumnViewLayout {
+        let documentHeight = max(viewportHeight, minimumDocumentHeight)
+        var nextX = 0.0
+        let frames = columnWidths.map { columnWidth in
+            let frame = ColumnViewFrame(
+                x: nextX,
+                y: 0,
+                width: columnWidth,
+                height: documentHeight
+            )
+            nextX += columnWidth
+            return frame
+        }
+        let documentWidth = columnWidths.isEmpty ? 260 : nextX
+
+        return ColumnViewLayout(
+            documentWidth: documentWidth,
+            documentHeight: documentHeight,
+            columnFrames: frames
+        )
+    }
+}
+
+public enum ColumnViewWidthMetrics {
+    public static let minimumColumnWidth: Double = 220
+    public static let maximumColumnWidth: Double = 420
+    public static let textPadding: Double = 58
+
+    public static func widths(
+        forColumnTextWidths columnTextWidths: [[Double]],
+        minimumColumnWidth: Double = Self.minimumColumnWidth,
+        maximumColumnWidth: Double = Self.maximumColumnWidth,
+        textPadding: Double = Self.textPadding
+    ) -> [Double] {
+        columnTextWidths.map { textWidths in
+            width(
+                forTextWidths: textWidths,
+                minimumColumnWidth: minimumColumnWidth,
+                maximumColumnWidth: maximumColumnWidth,
+                textPadding: textPadding
+            )
+        }
+    }
+
+    public static func width(
+        forTextWidths textWidths: [Double],
+        minimumColumnWidth: Double = Self.minimumColumnWidth,
+        maximumColumnWidth: Double = Self.maximumColumnWidth,
+        textPadding: Double = Self.textPadding
+    ) -> Double {
+        let widestText = textWidths.max() ?? 0
+        return min(max(widestText + textPadding, minimumColumnWidth), maximumColumnWidth)
+    }
 }

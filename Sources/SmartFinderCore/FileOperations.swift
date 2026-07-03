@@ -41,6 +41,14 @@ public final class FileOperations {
     }
 
     @discardableResult
+    public func createFile(fromTemplate kind: FileTemplateKind, in directoryURL: URL) throws -> URL {
+        let template = FileTemplateCatalog.template(for: kind)
+        let destinationURL = uniqueFileURL(named: template.defaultFileName, in: directoryURL)
+        try template.contents.write(to: destinationURL, atomically: true, encoding: .utf8)
+        return destinationURL
+    }
+
+    @discardableResult
     public func rename(_ url: URL, to newName: String) throws -> URL {
         let destinationURL = url.deletingLastPathComponent().appendingPathComponent(newName)
         try fileManager.moveItem(at: url, to: destinationURL)
@@ -132,6 +140,27 @@ public final class FileOperations {
             candidate = directoryURL.appendingPathComponent("\(baseName) \(index).zip")
             index += 1
         }
+        return candidate
+    }
+
+    public func uniqueFileURL(named fileName: String, in directoryURL: URL) -> URL {
+        let sourceURL = URL(fileURLWithPath: fileName)
+        let extensionPart = sourceURL.pathExtension
+        let baseName = sourceURL.deletingPathExtension().lastPathComponent
+        var candidate = directoryURL.appendingPathComponent(fileName)
+        var index = 2
+
+        while fileManager.fileExists(atPath: candidate.path) {
+            let candidateName: String
+            if extensionPart.isEmpty {
+                candidateName = "\(baseName) \(index)"
+            } else {
+                candidateName = "\(baseName) \(index).\(extensionPart)"
+            }
+            candidate = directoryURL.appendingPathComponent(candidateName)
+            index += 1
+        }
+
         return candidate
     }
 

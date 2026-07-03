@@ -2,6 +2,14 @@
 
 ## 2026-07-03
 
+### Community Feature Pass
+
+- Added adaptive column widths so column view expands for visible long file names while clamping very long names to avoid swallowing the full window.
+- Added a small file-template catalog and wired New Text File, New Markdown File, and New CSV File through toolbar, context menu, and menu bar actions.
+- Added enhanced path copying: full path, parent path, and shell-escaped path for Terminal use.
+- Added localizations for the new template and path-copy menu items across all existing UI languages.
+- Added core coverage for adaptive column sizing, template creation with collision-safe names, CSV contents, and copy-path formatting.
+
 ### Column View Local Navigation
 
 - Changed column-view folder selection to update the right-side columns in place instead of running a full folder reload.
@@ -38,7 +46,7 @@
 
 ### Version And Packaging
 
-- Next packaged DMG: `SmartFinder-0.8.7.dmg`
+- Next packaged DMG: `SmartFinder-0.8.8.dmg`
 
 ## 2026-07-02
 
@@ -72,7 +80,7 @@ The project intentionally stays in the companion-tool category. It does not try 
 - Sorting by name, type, size, and modified date, with ascending or descending direction.
 - Search within the current folder.
 - Quick Look from Space and Command-Y.
-- Common file actions: new folder, rename, move to Trash, copy, paste, copy path, compress, reveal in Finder, Get Info, Copy To, Move To, New Text File, and New Markdown File.
+- Common file actions: new folder, rename, move to Trash, copy, paste, copy path, copy parent path, copy shell path, compress, reveal in Finder, Get Info, Copy To, Move To, New Text File, New Markdown File, and New CSV File.
 - Drag and drop for moving files, with Option-copy behavior.
 - Sidebar drop targets for quick moves or copies.
 - Context menus for common folder and file actions.
