@@ -1,5 +1,19 @@
 # Work Log
 
+## 2026-07-03
+
+### Hot-Plug Volume Refresh Fix
+
+- Fixed a sidebar refresh gap where an external SSD inserted while SmartFinder was already open would not appear until the window was closed and reopened.
+- Added a mounted-volume sidebar refresh policy covering macOS workspace mount, unmount, and volume rename notifications.
+- Main windows now subscribe to those workspace notifications and rebuild the sidebar when the mounted-volume set changes.
+- If a volume is unmounted while the current folder is inside that volume, SmartFinder navigates back to the user's home folder before refreshing the sidebar.
+- Added regression coverage for the notification names that should trigger a sidebar refresh.
+
+### Version And Packaging
+
+- Next packaged DMG: `SmartFinder-0.8.4.dmg`
+
 ## 2026-07-02
 
 ### Project Goal

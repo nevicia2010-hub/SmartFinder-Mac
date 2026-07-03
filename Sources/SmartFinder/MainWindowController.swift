@@ -145,6 +145,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private let breadcrumbStack = NSStackView()
     private let toolbarTitleField = NSTextField(labelWithString: "")
     private let detailsPane = DetailsPaneView()
+    private let mountedVolumeRefreshPolicy = MountedVolumeSidebarRefreshPolicy()
     private lazy var shareButton = toolbarIconButton(
         symbolName: "square.and.arrow.up",
         fallbackTitle: L10n.string("toolbar.share", fallback: "Share"),
@@ -174,6 +175,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private weak var directViewModeContainer: NSView?
     private weak var displayMenuContainer: NSView?
     private var detailsPaneVisible = false
+    private var mountedVolumeNotificationObservers: [NSObjectProtocol] = []
 
     private struct SidebarLocation {
         let name: String
@@ -201,11 +203,19 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         }
 
         setupContent()
+        startObservingMountedVolumeChanges()
         navigate(to: startURL, recordHistory: true)
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        let notificationCenter = NSWorkspace.shared.notificationCenter
+        for observer in mountedVolumeNotificationObservers {
+            notificationCenter.removeObserver(observer)
+        }
     }
 
     private func setupContent() {
@@ -939,6 +949,36 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             view.removeFromSuperview()
         }
         populateSidebar(sidebarStack)
+    }
+
+    private func startObservingMountedVolumeChanges() {
+        let notificationCenter = NSWorkspace.shared.notificationCenter
+        mountedVolumeNotificationObservers = MountedVolumeSidebarRefreshPolicy
+            .defaultRefreshNotificationNames
+            .sorted()
+            .map { notificationName in
+                notificationCenter.addObserver(
+                    forName: Notification.Name(notificationName),
+                    object: nil,
+                    queue: .main
+                ) { [weak self] notification in
+                    self?.handleMountedVolumeNotification(notification)
+                }
+            }
+    }
+
+    private func handleMountedVolumeNotification(_ notification: Notification) {
+        guard mountedVolumeRefreshPolicy.shouldRefreshSidebar(forNotificationNamed: notification.name.rawValue) else {
+            return
+        }
+
+        if notification.name.rawValue == "NSWorkspaceDidUnmountNotification",
+           let volumeURL = notification.userInfo?[NSWorkspace.volumeURLUserInfoKey] as? URL,
+           currentPathIsInside(volumeURL) {
+            navigate(to: FileManager.default.homeDirectoryForCurrentUser, recordHistory: true)
+        }
+
+        reloadSidebar()
     }
 
     private func addSidebarHeader(_ title: String, to stack: NSStackView) {

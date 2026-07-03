@@ -49,7 +49,7 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 - Mounted volumes in the sidebar include an eject button.
 - Toolbar buttons use larger Finder-like hit areas and symbol sizes.
 - In full screen, the custom toolbar keeps a top guard so the revealed macOS menu bar does not cover the controls.
-- Mounted external volumes appear in the Finder-style sidebar.
+- Mounted external volumes appear in the Finder-style sidebar and refresh automatically when disks are mounted, unmounted, or renamed.
 - Icon view, list view, and lightweight column view are available from the Display menu.
 - Column view follows the current path through parent folders and opens child columns with system icons only, avoiding document thumbnail generation.
 - A path breadcrumb bar lets you jump directly to parent folders.
@@ -102,13 +102,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.8.3.dmg`
+- `dist/SmartFinder-0.8.4.dmg`
 
 The app is ad-hoc signed for local use. It is not Apple Developer ID signed or notarized, so macOS may show the standard warning the first time it is opened on another machine.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.8.3.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.8.4.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 

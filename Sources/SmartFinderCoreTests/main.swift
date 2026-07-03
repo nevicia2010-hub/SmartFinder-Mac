@@ -126,6 +126,24 @@ expect(
     "mounted /Volumes sidebar entries should expose eject affordances"
 )
 
+let volumeRefreshPolicy = MountedVolumeSidebarRefreshPolicy()
+expect(
+    volumeRefreshPolicy.shouldRefreshSidebar(forNotificationNamed: "NSWorkspaceDidMountNotification"),
+    "mount notifications should refresh the mounted-volume sidebar while the window is open"
+)
+expect(
+    volumeRefreshPolicy.shouldRefreshSidebar(forNotificationNamed: "NSWorkspaceDidUnmountNotification"),
+    "unmount notifications should refresh the mounted-volume sidebar while the window is open"
+)
+expect(
+    volumeRefreshPolicy.shouldRefreshSidebar(forNotificationNamed: "NSWorkspaceDidRenameVolumeNotification"),
+    "volume rename notifications should refresh the mounted-volume sidebar while the window is open"
+)
+expect(
+    !volumeRefreshPolicy.shouldRefreshSidebar(forNotificationNamed: "NSWorkspaceDidWakeNotification"),
+    "unrelated workspace notifications should not refresh the mounted-volume sidebar"
+)
+
 let breadcrumbURL = URL(fileURLWithPath: "/Users/bingwang/Pictures/RAW", isDirectory: true)
 let breadcrumbComponents = PathBreadcrumb.components(for: breadcrumbURL)
 expect(
