@@ -2,6 +2,19 @@
 
 ## 2026-07-03
 
+### Column View Stability Fix
+
+- Fixed a column-view crash where switching into column view could trigger an AppKit layout exception and leave the window unusable.
+- Rebuilt the column-view document area with explicit frame-based column sizing instead of relying on stack-view constraints inside a scroll view.
+- Added core coverage for column-view document sizing and column placement.
+
+### External Volume Directory Loading
+
+- Replaced the directory URL enumerator used for top-level folder loading with a lighter content provider based on `contentsOfDirectory(atPath:)`.
+- This avoids hangs observed when reading some removable SSD volumes through the heavier Foundation URL enumerator.
+- Hidden dotfiles and Finder-hidden entries, including system folders such as `$RECYCLE.BIN` and `System Volume Information`, remain hidden by default.
+- Added regression coverage for injected directory content providers and Finder-hidden item filtering.
+
 ### Hot-Plug Volume Refresh Fix
 
 - Fixed a sidebar refresh gap where an external SSD inserted while SmartFinder was already open would not appear until the window was closed and reopened.
@@ -12,7 +25,7 @@
 
 ### Version And Packaging
 
-- Next packaged DMG: `SmartFinder-0.8.4.dmg`
+- Next packaged DMG: `SmartFinder-0.8.5.dmg`
 
 ## 2026-07-02
 

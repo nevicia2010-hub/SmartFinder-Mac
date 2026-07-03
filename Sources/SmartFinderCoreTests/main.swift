@@ -81,16 +81,55 @@ expect(FileManager.default.fileExists(atPath: transferredMove.path), "move trans
 
 let visibleDirectoryFile = operationsDirectory.appendingPathComponent("visible.txt")
 let hiddenDirectoryFile = operationsDirectory.appendingPathComponent(".hidden.txt")
+let hiddenAttributeDirectory = operationsDirectory.appendingPathComponent("hidden-attribute", isDirectory: true)
 try "visible".write(to: visibleDirectoryFile, atomically: true, encoding: .utf8)
 try "hidden".write(to: hiddenDirectoryFile, atomically: true, encoding: .utf8)
+try FileManager.default.createDirectory(at: hiddenAttributeDirectory, withIntermediateDirectories: false)
+let hiddenAttributeResult = hiddenAttributeDirectory.path.withCString { path in
+    chflags(path, UInt32(UF_HIDDEN))
+}
+expect(hiddenAttributeResult == 0, "test setup should mark a directory as Finder-hidden")
 let defaultDirectoryNames = try DirectoryStore().loadItems(in: operationsDirectory).map(\.name)
 expect(defaultDirectoryNames.contains("visible.txt"), "directory loading should include visible files")
 expect(!defaultDirectoryNames.contains(".hidden.txt"), "directory loading should hide dotfiles by default")
+expect(!defaultDirectoryNames.contains("hidden-attribute"), "directory loading should hide Finder-hidden items by default")
 let hiddenDirectoryNames = try DirectoryStore().loadItems(
     in: operationsDirectory,
     options: DirectoryLoadOptions(includesHiddenItems: true)
 ).map(\.name)
 expect(hiddenDirectoryNames.contains(".hidden.txt"), "directory loading should show hidden files when requested")
+expect(hiddenDirectoryNames.contains("hidden-attribute"), "directory loading should show Finder-hidden items when requested")
+final class RecordingDirectoryContentProvider: DirectoryContentProviding {
+    private(set) var requests: [(path: String, includesHiddenItems: Bool)] = []
+    let returnedURLs: [URL]
+
+    init(returnedURLs: [URL]) {
+        self.returnedURLs = returnedURLs
+    }
+
+    func itemURLs(in folderURL: URL, includesHiddenItems: Bool) throws -> [URL] {
+        requests.append((folderURL.path, includesHiddenItems))
+        return returnedURLs
+    }
+}
+
+let injectedListFile = operationsDirectory.appendingPathComponent("provider-item.txt")
+try "provider".write(to: injectedListFile, atomically: true, encoding: .utf8)
+let recordingProvider = RecordingDirectoryContentProvider(returnedURLs: [injectedListFile])
+let injectedStore = DirectoryStore(contentProvider: recordingProvider)
+let injectedItems = try injectedStore.loadItems(
+    in: operationsDirectory,
+    options: DirectoryLoadOptions(includesHiddenItems: true)
+)
+expect(
+    recordingProvider.requests.map(\.path) == [operationsDirectory.path] &&
+    recordingProvider.requests.map(\.includesHiddenItems) == [true],
+    "directory loading should obtain item URLs through its content provider"
+)
+expect(
+    injectedItems.map(\.name) == ["provider-item.txt"],
+    "directory loading should build file items from provider-supplied URLs"
+)
 let displayNameFile = FileItem(
     url: URL(fileURLWithPath: "/tmp/report.final.pdf"),
     name: "report.final.pdf",
@@ -162,6 +201,20 @@ expect(
 expect(
     columnPath.map { $0.selectedURL?.path ?? "" } == ["/Users", "/Users/bingwang", "/Users/bingwang/Pictures", "/Users/bingwang/Pictures/RAW", ""],
     "column view path should select the next folder in each parent column"
+)
+let columnLayout = ColumnViewLayoutMetrics.layout(columnCount: 3, columnWidth: 260, viewportHeight: 720)
+expect(
+    columnLayout.documentWidth == 780 && columnLayout.documentHeight == 720,
+    "column view layout should size the document to all columns and the visible viewport height"
+)
+expect(
+    columnLayout.columnFrames.map { Int($0.x) } == [0, 260, 520],
+    "column view layout should place columns from left to right with stable widths"
+)
+let emptyColumnLayout = ColumnViewLayoutMetrics.layout(columnCount: 0, columnWidth: 260, viewportHeight: 320)
+expect(
+    emptyColumnLayout.documentWidth == 260 && emptyColumnLayout.documentHeight == 500,
+    "column view layout should keep a minimum document area even before columns are available"
 )
 
 let infoFile = operationsDirectory.appendingPathComponent("info.pdf")

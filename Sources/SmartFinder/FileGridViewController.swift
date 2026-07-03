@@ -129,7 +129,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private let collectionScrollView = NSScrollView()
     private let tableScrollView = NSScrollView()
     private let columnScrollView = NSScrollView()
-    private let columnStackView = NSStackView()
+    private let columnDocumentView = NSView()
 
     private struct ColumnFolder {
         let url: URL
@@ -233,15 +233,11 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func configureColumnView() {
-        columnStackView.orientation = .horizontal
-        columnStackView.alignment = .top
-        columnStackView.spacing = 0
-
         columnScrollView.hasVerticalScroller = false
         columnScrollView.hasHorizontalScroller = true
         columnScrollView.drawsBackground = true
         columnScrollView.backgroundColor = .controlBackgroundColor
-        columnScrollView.documentView = columnStackView
+        columnScrollView.documentView = columnDocumentView
         columnScrollView.isHidden = true
     }
 
@@ -1343,24 +1339,50 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func rebuildColumnTables() {
-        for view in columnStackView.arrangedSubviews {
-            columnStackView.removeArrangedSubview(view)
+        for view in columnDocumentView.subviews {
             view.removeFromSuperview()
         }
         columnTables = []
 
+        let columnWidth: CGFloat = 260
+        let layout = ColumnViewLayoutMetrics.layout(
+            columnCount: columnFolders.count,
+            columnWidth: Double(columnWidth),
+            viewportHeight: Double(columnScrollView.contentSize.height)
+        )
+        columnDocumentView.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: CGFloat(layout.documentWidth),
+            height: CGFloat(layout.documentHeight)
+        )
+
         for index in columnFolders.indices {
-            let scrollView = NSScrollView()
+            let frame = layout.columnFrames[index]
+            let scrollView = NSScrollView(frame: NSRect(
+                x: CGFloat(frame.x),
+                y: CGFloat(frame.y),
+                width: CGFloat(frame.width),
+                height: CGFloat(frame.height)
+            ))
             scrollView.hasVerticalScroller = true
             scrollView.hasHorizontalScroller = false
             scrollView.drawsBackground = true
             scrollView.backgroundColor = .controlBackgroundColor
             scrollView.borderType = .noBorder
-            scrollView.translatesAutoresizingMaskIntoConstraints = false
-            scrollView.widthAnchor.constraint(equalToConstant: 260).isActive = true
-            scrollView.heightAnchor.constraint(equalTo: columnStackView.heightAnchor).isActive = true
+            scrollView.autoresizingMask = [.height]
 
-            let table = SmartTableView()
+            let rowCount = itemsForColumn(at: index).count
+            let tableHeight = max(
+                CGFloat(frame.height),
+                CGFloat(rowCount) * 33
+            )
+            let table = SmartTableView(frame: NSRect(
+                x: 0,
+                y: 0,
+                width: CGFloat(frame.width),
+                height: tableHeight
+            ))
             table.dataSource = self
             table.delegate = self
             table.keyDelegate = self
@@ -1374,19 +1396,17 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             table.registerForDraggedTypes([.fileURL])
 
             let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("columnName"))
-            column.width = 260
+            column.width = CGFloat(frame.width)
             column.minWidth = 180
             column.resizingMask = []
             table.addTableColumn(column)
 
             scrollView.documentView = table
             columnTables.append(table)
-            columnStackView.addArrangedSubview(scrollView)
+            columnDocumentView.addSubview(scrollView)
+            table.reloadData()
         }
 
-        let width = CGFloat(max(columnFolders.count, 1)) * 260
-        let height = max(columnScrollView.contentSize.height, 500)
-        columnStackView.frame = NSRect(x: 0, y: 0, width: width, height: height)
         selectColumnPathRows()
         scrollColumnViewToTrailingEdge()
     }
@@ -1412,7 +1432,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     private func scrollColumnViewToTrailingEdge() {
         columnScrollView.layoutSubtreeIfNeeded()
-        let maxX = max(0, columnStackView.frame.width - columnScrollView.contentSize.width)
+        let maxX = max(0, columnDocumentView.frame.width - columnScrollView.contentSize.width)
         columnScrollView.contentView.scroll(to: NSPoint(x: maxX, y: 0))
         columnScrollView.reflectScrolledClipView(columnScrollView.contentView)
     }

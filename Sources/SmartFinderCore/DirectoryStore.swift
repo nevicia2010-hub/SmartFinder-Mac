@@ -1,5 +1,24 @@
 import Foundation
 
+public protocol DirectoryContentProviding {
+    func itemURLs(in folderURL: URL, includesHiddenItems: Bool) throws -> [URL]
+}
+
+public final class FileManagerDirectoryContentProvider: DirectoryContentProviding {
+    public init() {}
+
+    public func itemURLs(in folderURL: URL, includesHiddenItems: Bool) throws -> [URL] {
+        let names = try FileManager.default.contentsOfDirectory(atPath: folderURL.path)
+        return names.compactMap { name in
+            let url = folderURL.appendingPathComponent(name)
+            guard !includesHiddenItems else { return url }
+            if name.hasPrefix(".") { return nil }
+            if (try? url.resourceValues(forKeys: [.isHiddenKey]).isHidden) == true { return nil }
+            return url
+        }
+    }
+}
+
 public struct DirectoryLoadOptions: Equatable, Hashable, Sendable {
     public let includesHiddenItems: Bool
 
@@ -9,7 +28,11 @@ public struct DirectoryLoadOptions: Equatable, Hashable, Sendable {
 }
 
 public final class DirectoryStore {
-    public init() {}
+    private let contentProvider: DirectoryContentProviding
+
+    public init(contentProvider: DirectoryContentProviding = FileManagerDirectoryContentProvider()) {
+        self.contentProvider = contentProvider
+    }
 
     public func loadItems(in folderURL: URL, options: DirectoryLoadOptions = DirectoryLoadOptions()) throws -> [FileItem] {
         let keys: Set<URLResourceKey> = [
@@ -21,10 +44,9 @@ public final class DirectoryStore {
             .labelNumberKey
         ]
 
-        let urls = try FileManager.default.contentsOfDirectory(
-            at: folderURL,
-            includingPropertiesForKeys: Array(keys),
-            options: options.includesHiddenItems ? [] : [.skipsHiddenFiles]
+        let urls = try contentProvider.itemURLs(
+            in: folderURL,
+            includesHiddenItems: options.includesHiddenItems
         )
 
         return try urls.map { url in
