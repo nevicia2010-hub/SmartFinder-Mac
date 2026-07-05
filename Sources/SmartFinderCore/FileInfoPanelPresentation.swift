@@ -3,6 +3,7 @@ import Foundation
 public enum FileInfoPanelSectionKind: Equatable, Hashable {
     case general
     case nameAndExtension
+    case openWith
     case path
     case system
 }
@@ -15,6 +16,7 @@ public enum FileInfoPanelField: Equatable, Hashable {
     case modified
     case name
     case `extension`
+    case defaultApplication
     case fullPath
     case typeIdentifier
 }
@@ -68,7 +70,8 @@ public struct FileInfoPanelPresentationBuilder {
         kindLabel: String,
         sizeLabel: String,
         createdLabel: String?,
-        modifiedLabel: String?
+        modifiedLabel: String?,
+        defaultApplicationName: String? = nil
     ) -> FileInfoPanelPresentation {
         let parentPath = info.url.deletingLastPathComponent().path
         let title = selectedCount == 1 ? info.name : "\(selectedCount) Items"
@@ -96,6 +99,12 @@ public struct FileInfoPanelPresentationBuilder {
             FileInfoPanelRow(field: .fullPath, value: info.url.path, isCopyable: true)
         ]
 
+        let openWithRows = [
+            defaultApplicationName.map {
+                FileInfoPanelRow(field: .defaultApplication, value: $0)
+            }
+        ].compactMap { $0 }
+
         let systemRows = [
             info.typeIdentifier.map {
                 FileInfoPanelRow(field: .typeIdentifier, value: $0, isCopyable: true)
@@ -107,6 +116,9 @@ public struct FileInfoPanelPresentationBuilder {
             FileInfoPanelSection(kind: .nameAndExtension, rows: nameRows),
             FileInfoPanelSection(kind: .path, rows: pathRows)
         ]
+        if !openWithRows.isEmpty {
+            sections.insert(FileInfoPanelSection(kind: .openWith, rows: openWithRows), at: 2)
+        }
         if !systemRows.isEmpty {
             sections.append(FileInfoPanelSection(kind: .system, rows: systemRows))
         }

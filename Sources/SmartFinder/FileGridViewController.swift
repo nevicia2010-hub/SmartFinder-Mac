@@ -1876,7 +1876,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             kindLabel: kindLabel(for: info),
             sizeLabel: sizeLabel(for: info),
             createdLabel: info.createdAt.map { listDateFormatter.string(from: $0) },
-            modifiedLabel: info.modifiedAt.map { listDateFormatter.string(from: $0) }
+            modifiedLabel: info.modifiedAt.map { listDateFormatter.string(from: $0) },
+            defaultApplicationName: defaultApplicationName(for: info.url)
         )
         let icon = NSWorkspace.shared.icon(forFile: info.url.path)
         icon.size = NSSize(width: 72, height: 72)
@@ -1902,6 +1903,17 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
         controller.showWindow(nil)
         controller.window?.makeKeyAndOrderFront(nil)
+    }
+
+    private func defaultApplicationName(for url: URL) -> String? {
+        guard let appURL = NSWorkspace.shared.urlForApplication(toOpen: url) else {
+            return nil
+        }
+        if let bundleName = Bundle(url: appURL)?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String,
+           !bundleName.isEmpty {
+            return bundleName
+        }
+        return FileManager.default.displayName(atPath: appURL.path)
     }
 
     private func kindLabel(for info: FileInfo) -> String {

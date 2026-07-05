@@ -2,6 +2,20 @@
 
 ## 2026-07-05
 
+### Get Info Layout And Open With
+
+- Tightened the Get Info window layout so sections start directly under the header without the large blank gap seen in the first Finder-style attempt.
+- Reworked the header into a compact icon, name, modified-date, and size layout closer to macOS Get Info while keeping SmartFinder's own styling.
+- Replaced loose row stacks with a more stable label/value layout and smaller spacing.
+- Added an Open With section that lists applications macOS reports as able to open the selected file.
+- Added an Open button that opens the selected file with the chosen application without changing the system default for that file type.
+- Added localized labels for the Open With controls across all existing UI languages.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.12.dmg`
+- Latest tag: `v0.8.12`
+
 ### Finder-Like Get Info Window
 
 - Replaced the previous modal `NSAlert` Get Info display with a separate non-modal information window.

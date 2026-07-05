@@ -318,6 +318,23 @@ expect(
     infoPanelPresentation.row(for: .fullPath)?.isCopyable == true,
     "info panel path section should include a copyable full path"
 )
+let infoPanelPresentationWithOpenWith = FileInfoPanelPresentationBuilder().presentation(
+    for: fileInfo,
+    selectedCount: 1,
+    kindLabel: "PDF",
+    sizeLabel: "8 bytes",
+    createdLabel: nil,
+    modifiedLabel: nil,
+    defaultApplicationName: "Preview"
+)
+expect(
+    infoPanelPresentationWithOpenWith.sections.map(\.kind).contains(.openWith),
+    "info panel presentation should expose an Open With section for selectable applications"
+)
+expect(
+    infoPanelPresentationWithOpenWith.row(for: .defaultApplication)?.value == "Preview",
+    "info panel Open With section should include the current default application name"
+)
 let photoMetadata = PhotoMetadataSummary(properties: [
     "PixelWidth": 8192,
     "PixelHeight": 5464,

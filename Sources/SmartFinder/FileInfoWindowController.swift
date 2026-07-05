@@ -4,23 +4,31 @@ import SmartFinderCore
 final class FileInfoWindowController: NSWindowController, NSWindowDelegate {
     var onClose: (() -> Void)?
 
+    private struct OpenWithApplication {
+        let name: String
+        let url: URL
+    }
+
     private let presentation: FileInfoPanelPresentation
     private let icon: NSImage
+    private let openWithApplications: [OpenWithApplication]
     private var copyableValues: [String] = []
+    private weak var openWithPopUpButton: NSPopUpButton?
 
     init(presentation: FileInfoPanelPresentation, icon: NSImage) {
         self.presentation = presentation
         self.icon = icon
+        self.openWithApplications = Self.applications(toOpen: presentation.representedURL)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 620),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 560),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = L10n.format("info.windowTitle", fallback: "%@ Info", presentation.title)
         window.representedURL = presentation.representedURL
-        window.minSize = NSSize(width: 420, height: 420)
+        window.minSize = NSSize(width: 460, height: 420)
 
         super.init(window: window)
 
@@ -39,14 +47,14 @@ final class FileInfoWindowController: NSWindowController, NSWindowDelegate {
     private func makeContentView() -> NSView {
         let root = NSStackView()
         root.orientation = .vertical
-        root.alignment = .leading
-        root.spacing = 14
-        root.edgeInsets = NSEdgeInsets(top: 18, left: 18, bottom: 14, right: 18)
+        root.alignment = .width
+        root.spacing = 10
+        root.edgeInsets = NSEdgeInsets(top: 18, left: 20, bottom: 14, right: 20)
         root.translatesAutoresizingMaskIntoConstraints = false
 
         root.addArrangedSubview(makeHeaderView())
         root.addArrangedSubview(makeSeparator())
-        root.addArrangedSubview(makeSectionsScrollView())
+        root.addArrangedSubview(makeSectionsView())
         root.addArrangedSubview(makeFooterView())
 
         let contentView = NSView()
@@ -66,18 +74,21 @@ final class FileInfoWindowController: NSWindowController, NSWindowDelegate {
         iconView.imageScaling = .scaleProportionallyUpOrDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 72),
-            iconView.heightAnchor.constraint(equalToConstant: 72)
+            iconView.widthAnchor.constraint(equalToConstant: 58),
+            iconView.heightAnchor.constraint(equalToConstant: 58)
         ])
 
         let titleField = NSTextField(wrappingLabelWithString: presentation.title)
-        titleField.font = .systemFont(ofSize: 20, weight: .semibold)
+        titleField.font = .systemFont(ofSize: 16, weight: .semibold)
         titleField.lineBreakMode = .byWordWrapping
         titleField.maximumNumberOfLines = 2
 
-        let subtitle = presentation.row(for: .kind)?.value ?? ""
+        let modifiedText = presentation.row(for: .modified).map {
+            "\(L10n.string("info.modified", fallback: "Modified")): \($0.value)"
+        }
+        let subtitle = modifiedText ?? presentation.row(for: .kind)?.value ?? ""
         let subtitleField = NSTextField(labelWithString: subtitle)
-        subtitleField.font = .systemFont(ofSize: 13)
+        subtitleField.font = .systemFont(ofSize: 12)
         subtitleField.textColor = .secondaryLabelColor
 
         let textStack = NSStackView(views: [titleField, subtitleField])
@@ -85,44 +96,45 @@ final class FileInfoWindowController: NSWindowController, NSWindowDelegate {
         textStack.alignment = .leading
         textStack.spacing = 4
 
-        let header = NSStackView(views: [iconView, textStack])
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        let sizeField = NSTextField(labelWithString: presentation.row(for: .size)?.value ?? "")
+        sizeField.font = .systemFont(ofSize: 15, weight: .semibold)
+        sizeField.alignment = .right
+        sizeField.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        let header = NSStackView(views: [iconView, textStack, spacer, sizeField])
         header.orientation = .horizontal
         header.alignment = .centerY
-        header.spacing = 16
+        header.spacing = 12
         header.translatesAutoresizingMaskIntoConstraints = false
-        header.widthAnchor.constraint(greaterThanOrEqualToConstant: 380).isActive = true
 
         return header
     }
 
-    private func makeSectionsScrollView() -> NSScrollView {
+    private func makeSectionsView() -> NSView {
         let stack = NSStackView()
         stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 16
-        stack.edgeInsets = NSEdgeInsets(top: 2, left: 0, bottom: 2, right: 0)
+        stack.alignment = .width
+        stack.spacing = 0
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        for section in presentation.sections {
+        for (index, section) in presentation.sections.enumerated() {
+            if index > 0 {
+                stack.addArrangedSubview(makeSeparator())
+            }
             stack.addArrangedSubview(makeSectionView(section))
         }
 
-        let scrollView = NSScrollView()
-        scrollView.drawsBackground = false
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
-        scrollView.borderType = .noBorder
-        scrollView.documentView = stack
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            stack.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
-            scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 260)
-        ])
-
-        return scrollView
+        return stack
     }
 
     private func makeSectionView(_ section: FileInfoPanelSection) -> NSView {
+        if section.kind == .openWith {
+            return makeOpenWithSectionView(section)
+        }
+
         let titleField = NSTextField(labelWithString: title(for: section.kind))
         titleField.font = .systemFont(ofSize: 13, weight: .semibold)
         titleField.textColor = .labelColor
@@ -137,24 +149,56 @@ final class FileInfoWindowController: NSWindowController, NSWindowDelegate {
 
         let sectionStack = NSStackView(views: [titleField, rowsStack])
         sectionStack.orientation = .vertical
-        sectionStack.alignment = .leading
-        sectionStack.spacing = 8
+        sectionStack.alignment = .width
+        sectionStack.spacing = 7
+        sectionStack.edgeInsets = NSEdgeInsets(top: 10, left: 0, bottom: 10, right: 0)
         sectionStack.translatesAutoresizingMaskIntoConstraints = false
-        sectionStack.widthAnchor.constraint(greaterThanOrEqualToConstant: 380).isActive = true
 
         return sectionStack
     }
 
+    private func makeOpenWithSectionView(_ section: FileInfoPanelSection) -> NSView {
+        let titleField = NSTextField(labelWithString: title(for: section.kind))
+        titleField.font = .systemFont(ofSize: 13, weight: .semibold)
+
+        let popUpButton = NSPopUpButton()
+        popUpButton.target = self
+        popUpButton.action = #selector(openWithApplicationChanged(_:))
+        popUpButton.translatesAutoresizingMaskIntoConstraints = false
+        popUpButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 260).isActive = true
+        configureOpenWithMenu(popUpButton)
+        openWithPopUpButton = popUpButton
+
+        let openButton = NSButton(
+            title: L10n.string("info.openWithButton", fallback: "Open"),
+            target: self,
+            action: #selector(openWithSelectedApplication)
+        )
+        openButton.bezelStyle = .rounded
+        openButton.isEnabled = !openWithApplications.isEmpty
+
+        let rowStack = NSStackView(views: [makeFieldLabel(.defaultApplication), popUpButton, openButton])
+        rowStack.orientation = .horizontal
+        rowStack.alignment = .centerY
+        rowStack.spacing = 10
+
+        let helpField = NSTextField(labelWithString: L10n.string("info.openWithHelp", fallback: "Choose an app to open this file."))
+        helpField.font = .systemFont(ofSize: 11.5)
+        helpField.textColor = .secondaryLabelColor
+
+        let sectionStack = NSStackView(views: [titleField, rowStack, helpField])
+        sectionStack.orientation = .vertical
+        sectionStack.alignment = .width
+        sectionStack.spacing = 7
+        sectionStack.edgeInsets = NSEdgeInsets(top: 10, left: 0, bottom: 10, right: 0)
+        return sectionStack
+    }
+
     private func makeRowView(_ row: FileInfoPanelRow) -> NSView {
-        let labelField = NSTextField(labelWithString: label(for: row.field))
-        labelField.font = .systemFont(ofSize: 12)
-        labelField.textColor = .secondaryLabelColor
-        labelField.alignment = .right
-        labelField.translatesAutoresizingMaskIntoConstraints = false
-        labelField.widthAnchor.constraint(equalToConstant: 118).isActive = true
+        let labelField = makeFieldLabel(row.field)
 
         let valueField = NSTextField(wrappingLabelWithString: row.value)
-        valueField.font = .systemFont(ofSize: 12.5)
+        valueField.font = .systemFont(ofSize: 12.8)
         valueField.textColor = .labelColor
         valueField.isSelectable = true
         valueField.lineBreakMode = .byWordWrapping
@@ -186,8 +230,17 @@ final class FileInfoWindowController: NSWindowController, NSWindowDelegate {
             rowStack.addArrangedSubview(button)
         }
 
-        rowStack.widthAnchor.constraint(greaterThanOrEqualToConstant: 380).isActive = true
         return rowStack
+    }
+
+    private func makeFieldLabel(_ field: FileInfoPanelField) -> NSTextField {
+        let labelField = NSTextField(labelWithString: "\(label(for: field)):")
+        labelField.font = .systemFont(ofSize: 12.5, weight: .semibold)
+        labelField.textColor = .secondaryLabelColor
+        labelField.alignment = .right
+        labelField.translatesAutoresizingMaskIntoConstraints = false
+        labelField.widthAnchor.constraint(equalToConstant: 112).isActive = true
+        return labelField
     }
 
     private func makeFooterView() -> NSView {
@@ -220,7 +273,6 @@ final class FileInfoWindowController: NSWindowController, NSWindowDelegate {
         footer.alignment = .centerY
         footer.spacing = 8
         footer.translatesAutoresizingMaskIntoConstraints = false
-        footer.widthAnchor.constraint(greaterThanOrEqualToConstant: 380).isActive = true
 
         return footer
     }
@@ -239,6 +291,8 @@ final class FileInfoWindowController: NSWindowController, NSWindowDelegate {
             return L10n.string("info.section.general", fallback: "General")
         case .nameAndExtension:
             return L10n.string("info.section.nameAndExtension", fallback: "Name & Extension")
+        case .openWith:
+            return L10n.string("info.section.openWith", fallback: "Open With")
         case .path:
             return L10n.string("info.section.path", fallback: "Path")
         case .system:
@@ -262,6 +316,8 @@ final class FileInfoWindowController: NSWindowController, NSWindowDelegate {
             return L10n.string("info.name", fallback: "Name")
         case .extension:
             return L10n.string("info.extension", fallback: "Extension")
+        case .defaultApplication:
+            return L10n.string("info.defaultApplication", fallback: "Application")
         case .fullPath:
             return L10n.string("info.fullPath", fallback: "Full Path")
         case .typeIdentifier:
@@ -284,6 +340,22 @@ final class FileInfoWindowController: NSWindowController, NSWindowDelegate {
         NSWorkspace.shared.activateFileViewerSelecting([presentation.representedURL])
     }
 
+    @objc private func openWithApplicationChanged(_ sender: NSPopUpButton) {}
+
+    @objc private func openWithSelectedApplication() {
+        guard let selectedApp = selectedOpenWithApplication() else {
+            NSWorkspace.shared.open(presentation.representedURL)
+            return
+        }
+
+        let configuration = NSWorkspace.OpenConfiguration()
+        NSWorkspace.shared.open(
+            [presentation.representedURL],
+            withApplicationAt: selectedApp.url,
+            configuration: configuration
+        )
+    }
+
     @objc private func closeWindow() {
         window?.close()
     }
@@ -291,5 +363,66 @@ final class FileInfoWindowController: NSWindowController, NSWindowDelegate {
     private func copy(_ value: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(value, forType: .string)
+    }
+
+    private func configureOpenWithMenu(_ popUpButton: NSPopUpButton) {
+        popUpButton.removeAllItems()
+        guard !openWithApplications.isEmpty else {
+            popUpButton.addItem(withTitle: L10n.string("info.noApplications", fallback: "No application found"))
+            popUpButton.isEnabled = false
+            return
+        }
+
+        for app in openWithApplications {
+            popUpButton.addItem(withTitle: app.name)
+            popUpButton.lastItem?.representedObject = app.url
+            let icon = NSWorkspace.shared.icon(forFile: app.url.path)
+            icon.size = NSSize(width: 16, height: 16)
+            popUpButton.lastItem?.image = icon
+        }
+    }
+
+    private func selectedOpenWithApplication() -> OpenWithApplication? {
+        guard let selectedURL = openWithPopUpButton?.selectedItem?.representedObject as? URL else {
+            return nil
+        }
+        return openWithApplications.first { $0.url == selectedURL }
+    }
+
+    private static func applications(toOpen fileURL: URL) -> [OpenWithApplication] {
+        let workspace = NSWorkspace.shared
+        let defaultURL = workspace.urlForApplication(toOpen: fileURL)
+        var urls = workspace.urlsForApplications(toOpen: fileURL)
+        if let defaultURL, !urls.contains(defaultURL) {
+            urls.insert(defaultURL, at: 0)
+        }
+
+        var seen = Set<URL>()
+        let apps = urls.compactMap { appURL -> OpenWithApplication? in
+            let standardizedURL = appURL.standardizedFileURL
+            guard !seen.contains(standardizedURL) else {
+                return nil
+            }
+            seen.insert(standardizedURL)
+            return OpenWithApplication(name: applicationName(for: standardizedURL), url: standardizedURL)
+        }
+
+        return apps.sorted { lhs, rhs in
+            if lhs.url == defaultURL {
+                return true
+            }
+            if rhs.url == defaultURL {
+                return false
+            }
+            return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+        }
+    }
+
+    private static func applicationName(for url: URL) -> String {
+        if let bundleName = Bundle(url: url)?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String,
+           !bundleName.isEmpty {
+            return bundleName
+        }
+        return FileManager.default.displayName(atPath: url.path)
     }
 }
