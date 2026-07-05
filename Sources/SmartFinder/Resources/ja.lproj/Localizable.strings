@@ -116,6 +116,16 @@
 "info.where" = "場所";
 "info.created" = "作成日";
 "info.modified" = "変更日";
+"info.windowTitle" = "%@の情報";
+"info.section.general" = "一般";
+"info.section.nameAndExtension" = "名前と拡張子";
+"info.section.path" = "パス";
+"info.section.system" = "システム";
+"info.name" = "名前";
+"info.fullPath" = "フルパス";
+"info.typeIdentifier" = "タイプ識別子";
+"info.copyValue" = "値をコピー";
+"info.copyPath" = "パスをコピー";
 "photo.camera" = "カメラ";
 "photo.lens" = "レンズ";
 "photo.dimensions" = "サイズ";
@@ -136,6 +146,7 @@
 "dialog.chooseFolder.prompt" = "選択";
 "dialog.chooseFolder.message" = "保存先フォルダを選択してください。";
 "dialog.ok" = "OK";
+"dialog.close" = "閉じる";
 "dialog.cancel" = "キャンセル";
 
 "details.empty.title" = "未選択";

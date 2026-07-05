@@ -116,6 +116,16 @@
 "info.where" = "位置";
 "info.created" = "建立時間";
 "info.modified" = "修改時間";
+"info.windowTitle" = "%@ 簡介";
+"info.section.general" = "一般";
+"info.section.nameAndExtension" = "名稱與副檔名";
+"info.section.path" = "路徑";
+"info.section.system" = "系統";
+"info.name" = "名稱";
+"info.fullPath" = "完整路徑";
+"info.typeIdentifier" = "類型識別碼";
+"info.copyValue" = "複製此值";
+"info.copyPath" = "複製路徑";
 "photo.camera" = "相機";
 "photo.lens" = "鏡頭";
 "photo.dimensions" = "尺寸";
@@ -136,6 +146,7 @@
 "dialog.chooseFolder.prompt" = "選擇";
 "dialog.chooseFolder.message" = "選擇目的地資料夾。";
 "dialog.ok" = "好";
+"dialog.close" = "關閉";
 "dialog.cancel" = "取消";
 
 "details.empty.title" = "未選取";

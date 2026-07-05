@@ -116,6 +116,16 @@
 "info.where" = "위치";
 "info.created" = "생성일";
 "info.modified" = "수정일";
+"info.windowTitle" = "%@ 정보";
+"info.section.general" = "일반";
+"info.section.nameAndExtension" = "이름 및 확장자";
+"info.section.path" = "경로";
+"info.section.system" = "시스템";
+"info.name" = "이름";
+"info.fullPath" = "전체 경로";
+"info.typeIdentifier" = "유형 식별자";
+"info.copyValue" = "값 복사";
+"info.copyPath" = "경로 복사";
 "photo.camera" = "카메라";
 "photo.lens" = "렌즈";
 "photo.dimensions" = "크기";
@@ -136,6 +146,7 @@
 "dialog.chooseFolder.prompt" = "선택";
 "dialog.chooseFolder.message" = "대상 폴더를 선택하십시오.";
 "dialog.ok" = "확인";
+"dialog.close" = "닫기";
 "dialog.cancel" = "취소";
 
 "details.empty.title" = "선택 없음";

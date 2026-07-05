@@ -289,6 +289,35 @@ expect(fileInfo.fileExtension == "pdf", "file info should expose file extension"
 expect(fileInfo.category == .document, "file info should classify documents")
 expect(fileInfo.byteSize == 8, "file info should include byte size")
 expect(!fileInfo.isDirectory, "file info should distinguish regular files")
+let infoPanelPresentation = FileInfoPanelPresentationBuilder().presentation(
+    for: fileInfo,
+    selectedCount: 1,
+    kindLabel: "PDF",
+    sizeLabel: "8 bytes",
+    createdLabel: "Created label",
+    modifiedLabel: "Modified label"
+)
+expect(infoPanelPresentation.title == "info.pdf", "info panel presentation should use the item name as the single-item title")
+expect(
+    infoPanelPresentation.sections.map(\.kind) == [.general, .nameAndExtension, .path, .system],
+    "info panel presentation should expose Finder-style sections"
+)
+expect(
+    infoPanelPresentation.row(for: .kind)?.value == "PDF" &&
+    infoPanelPresentation.row(for: .size)?.value == "8 bytes" &&
+    infoPanelPresentation.row(for: .where)?.value == operationsDirectory.path,
+    "info panel general section should include kind, size, and parent location"
+)
+expect(
+    infoPanelPresentation.row(for: .name)?.value == "info.pdf" &&
+    infoPanelPresentation.row(for: .extension)?.value == "pdf",
+    "info panel name section should include the file name and extension"
+)
+expect(
+    infoPanelPresentation.row(for: .fullPath)?.value == infoFile.path &&
+    infoPanelPresentation.row(for: .fullPath)?.isCopyable == true,
+    "info panel path section should include a copyable full path"
+)
 let photoMetadata = PhotoMetadataSummary(properties: [
     "PixelWidth": 8192,
     "PixelHeight": 5464,

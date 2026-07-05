@@ -155,6 +155,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private var showsSelectionCheckboxes = false
     private var suppressColumnSelectionChange = false
     private var folderSizeCancellationToken: FolderSizeCancellationToken?
+    private var infoWindowControllers: [FileInfoWindowController] = []
 
     override func loadView() {
         let layout = NSCollectionViewFlowLayout()
@@ -1134,7 +1135,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
         do {
             let info = try fileInfoProvider.info(for: firstURL)
-            showInfoAlert(info: info, selectedCount: urls.count)
+            showInfoWindow(info: info, selectedCount: urls.count)
         } catch {
             showOperationError(error)
         }
@@ -1868,36 +1869,39 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
     }
 
-    private func showInfoAlert(info: FileInfo, selectedCount: Int) {
-        let alert = NSAlert()
-        alert.messageText = selectedCount == 1
-            ? info.name
-            : L10n.format("dialog.info.multipleTitle", fallback: "%d Items", selectedCount)
-        alert.informativeText = infoText(for: info, selectedCount: selectedCount)
-        alert.addButton(withTitle: L10n.string("dialog.ok", fallback: "OK"))
-        alert.runModal()
-        view.window?.makeFirstResponder(firstResponderForCurrentViewMode())
-    }
-
-    private func infoText(for info: FileInfo, selectedCount: Int) -> String {
-        var lines: [String] = []
-        if selectedCount > 1 {
-            lines.append(L10n.format("info.selection", fallback: "Selection: %d items", selectedCount))
+    private func showInfoWindow(info: FileInfo, selectedCount: Int) {
+        let presentation = FileInfoPanelPresentationBuilder().presentation(
+            for: info,
+            selectedCount: selectedCount,
+            kindLabel: kindLabel(for: info),
+            sizeLabel: sizeLabel(for: info),
+            createdLabel: info.createdAt.map { listDateFormatter.string(from: $0) },
+            modifiedLabel: info.modifiedAt.map { listDateFormatter.string(from: $0) }
+        )
+        let icon = NSWorkspace.shared.icon(forFile: info.url.path)
+        icon.size = NSSize(width: 72, height: 72)
+        let controller = FileInfoWindowController(presentation: presentation, icon: icon)
+        controller.onClose = { [weak self, weak controller] in
+            guard let controller else {
+                return
+            }
+            self?.infoWindowControllers.removeAll { $0 === controller }
         }
-
-        lines.append("\(L10n.string("info.kind", fallback: "Kind")): \(kindLabel(for: info))")
-        lines.append("\(L10n.string("info.size", fallback: "Size")): \(sizeLabel(for: info))")
-        if !info.fileExtension.isEmpty {
-            lines.append("\(L10n.string("info.extension", fallback: "Extension")): \(info.fileExtension)")
+        infoWindowControllers.append(controller)
+        if let parentWindow = view.window, let infoWindow = controller.window {
+            let parentFrame = parentWindow.frame
+            infoWindow.setFrameOrigin(
+                NSPoint(
+                    x: parentFrame.midX - infoWindow.frame.width / 2,
+                    y: parentFrame.midY - infoWindow.frame.height / 2
+                )
+            )
+            parentWindow.addChildWindow(infoWindow, ordered: .above)
+        } else {
+            controller.window?.center()
         }
-        lines.append("\(L10n.string("info.where", fallback: "Where")): \(info.url.deletingLastPathComponent().path)")
-        if let createdAt = info.createdAt {
-            lines.append("\(L10n.string("info.created", fallback: "Created")): \(listDateFormatter.string(from: createdAt))")
-        }
-        if let modifiedAt = info.modifiedAt {
-            lines.append("\(L10n.string("info.modified", fallback: "Modified")): \(listDateFormatter.string(from: modifiedAt))")
-        }
-        return lines.joined(separator: "\n")
+        controller.showWindow(nil)
+        controller.window?.makeKeyAndOrderFront(nil)
     }
 
     private func kindLabel(for info: FileInfo) -> String {

@@ -116,6 +116,16 @@
 "info.where" = "Ubicación";
 "info.created" = "Creado";
 "info.modified" = "Modificado";
+"info.windowTitle" = "Información de %@";
+"info.section.general" = "General";
+"info.section.nameAndExtension" = "Nombre y extensión";
+"info.section.path" = "Ruta";
+"info.section.system" = "Sistema";
+"info.name" = "Nombre";
+"info.fullPath" = "Ruta completa";
+"info.typeIdentifier" = "Identificador de tipo";
+"info.copyValue" = "Copiar valor";
+"info.copyPath" = "Copiar ruta";
 "photo.camera" = "Cámara";
 "photo.lens" = "Objetivo";
 "photo.dimensions" = "Dimensiones";
@@ -136,6 +146,7 @@
 "dialog.chooseFolder.prompt" = "Elegir";
 "dialog.chooseFolder.message" = "Elige una carpeta de destino.";
 "dialog.ok" = "Aceptar";
+"dialog.close" = "Cerrar";
 "dialog.cancel" = "Cancelar";
 
 "details.empty.title" = "Sin selección";

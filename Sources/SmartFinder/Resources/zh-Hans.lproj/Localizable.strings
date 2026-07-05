@@ -116,6 +116,16 @@
 "info.where" = "位置";
 "info.created" = "创建时间";
 "info.modified" = "修改时间";
+"info.windowTitle" = "%@ 简介";
+"info.section.general" = "通用";
+"info.section.nameAndExtension" = "名称与扩展名";
+"info.section.path" = "路径";
+"info.section.system" = "系统";
+"info.name" = "名称";
+"info.fullPath" = "完整路径";
+"info.typeIdentifier" = "类型标识符";
+"info.copyValue" = "复制此值";
+"info.copyPath" = "复制路径";
 "photo.camera" = "相机";
 "photo.lens" = "镜头";
 "photo.dimensions" = "尺寸";
@@ -136,6 +146,7 @@
 "dialog.chooseFolder.prompt" = "选择";
 "dialog.chooseFolder.message" = "选择目标文件夹。";
 "dialog.ok" = "确定";
+"dialog.close" = "关闭";
 "dialog.cancel" = "取消";
 
 "details.empty.title" = "未选择";

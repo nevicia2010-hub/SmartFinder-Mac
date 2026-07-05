@@ -1,5 +1,21 @@
 # Work Log
 
+## 2026-07-05
+
+### Finder-Like Get Info Window
+
+- Replaced the previous modal `NSAlert` Get Info display with a separate non-modal information window.
+- Added a tested core presentation model for Finder-style information sections: General, Name & Extension, Path, and System.
+- The new window shows a larger system icon, the selected item name, kind, size, parent location, dates, name, extension, full path, and type identifier when available.
+- Copy affordances were added for path-style fields, plus footer actions for Copy Path, Reveal in Finder, and Close.
+- The window is created only when Get Info is requested and uses existing file metadata and system icons; it does not start thumbnail generation, recursive folder scans, or a persistent inspector process.
+- Added localized labels for the new Get Info window in all existing UI languages.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.11.dmg`
+- Latest tag: `v0.8.11`
+
 ## 2026-07-03
 
 ### Disk Image Sidebar Refresh Fix
