@@ -66,6 +66,7 @@ let movableFile = operationsDirectory.appendingPathComponent("move-me.txt")
 try "move-me".write(to: movableFile, atomically: true, encoding: .utf8)
 let movedFile = try fileOperations.move(movableFile, toDirectory: moveTargetDirectory)
 expect(movedFile.deletingLastPathComponent() == moveTargetDirectory, "move to directory should place the item in the target folder")
+expect(movedFile.lastPathComponent == "move-me.txt", "move to directory should keep the original item name when there is no collision")
 expect(!FileManager.default.fileExists(atPath: movableFile.path), "move to directory should remove the source item")
 expect(FileManager.default.fileExists(atPath: movedFile.path), "move to directory should create the destination item")
 let transferCopySource = operationsDirectory.appendingPathComponent("drag-copy.txt")
@@ -78,6 +79,22 @@ try "drag-move".write(to: transferMoveSource, atomically: true, encoding: .utf8)
 let transferredMove = try fileOperations.transfer(transferMoveSource, toDirectory: moveTargetDirectory, operation: .move)
 expect(!FileManager.default.fileExists(atPath: transferMoveSource.path), "move transfer should remove the source item")
 expect(FileManager.default.fileExists(atPath: transferredMove.path), "move transfer should create the destination item")
+let duplicateDragURLs = FileTransferPlan.uniqueSourceURLs([
+    transferMoveSource,
+    transferMoveSource,
+    transferCopySource
+])
+expect(
+    duplicateDragURLs == [transferMoveSource, transferCopySource],
+    "drag transfer planning should ignore duplicate source URLs so one drop cannot move the same item twice"
+)
+expect(
+    FileTransferPlan.affectedDirectoryURLs(
+        sourceURLs: [transferredMove],
+        targetDirectoryURL: operationsDirectory
+    ) == [moveTargetDirectory.standardizedFileURL, operationsDirectory.standardizedFileURL],
+    "drag transfer planning should mark both source and target folders as stale after a move"
+)
 
 let visibleDirectoryFile = operationsDirectory.appendingPathComponent("visible.txt")
 let hiddenDirectoryFile = operationsDirectory.appendingPathComponent(".hidden.txt")

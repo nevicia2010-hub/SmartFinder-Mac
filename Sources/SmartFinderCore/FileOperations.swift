@@ -64,7 +64,7 @@ public final class FileOperations {
 
     @discardableResult
     public func move(_ sourceURL: URL, toDirectory directoryURL: URL) throws -> URL {
-        let destinationURL = uniqueDestinationURL(for: sourceURL, in: directoryURL)
+        let destinationURL = uniqueMoveDestinationURL(for: sourceURL, in: directoryURL)
         try fileManager.moveItem(at: sourceURL, to: destinationURL)
         return destinationURL
     }
@@ -119,6 +119,15 @@ public final class FileOperations {
         }
 
         return candidate
+    }
+
+    public func uniqueMoveDestinationURL(for sourceURL: URL, in directoryURL: URL) -> URL {
+        let originalName = sourceURL.lastPathComponent
+        let originalCandidate = directoryURL.appendingPathComponent(originalName)
+        guard fileManager.fileExists(atPath: originalCandidate.path) else {
+            return originalCandidate
+        }
+        return uniqueDestinationURL(for: sourceURL, in: directoryURL)
     }
 
     public func uniqueArchiveURL(for sourceURLs: [URL], in directoryURL: URL) -> URL {

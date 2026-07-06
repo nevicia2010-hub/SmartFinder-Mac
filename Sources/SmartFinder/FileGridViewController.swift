@@ -969,22 +969,38 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func transferItems(_ urls: [URL], toDirectory directoryURL: URL, operation: FileTransferOperation) throws {
+        let sourceURLs = FileTransferPlan.uniqueSourceURLs(urls)
         let targetURL = directoryURL.standardizedFileURL
-        var changedCurrentFolder = currentFolderURL?.standardizedFileURL == targetURL
+        let affectedDirectories = FileTransferPlan.affectedDirectoryURLs(
+            sourceURLs: sourceURLs,
+            targetDirectoryURL: directoryURL
+        )
+        var didTransferItem = false
 
-        for url in urls {
+        defer {
+            if didTransferItem, shouldRefreshAfterTransfer(affectedDirectories: affectedDirectories) {
+                refresh()
+            }
+        }
+
+        for url in sourceURLs {
             if operation == .move && url.deletingLastPathComponent().standardizedFileURL == targetURL {
                 continue
             }
             _ = try fileOperations.transfer(url, toDirectory: directoryURL, operation: operation)
-            if url.deletingLastPathComponent().standardizedFileURL == currentFolderURL?.standardizedFileURL {
-                changedCurrentFolder = true
-            }
+            didTransferItem = true
+        }
+    }
+
+    private func shouldRefreshAfterTransfer(affectedDirectories: [URL]) -> Bool {
+        if viewMode == .column {
+            return true
         }
 
-        if changedCurrentFolder {
-            refresh()
+        guard let currentFolderURL = currentFolderURL?.standardizedFileURL else {
+            return false
         }
+        return affectedDirectories.contains(currentFolderURL)
     }
 
     private func performDrop(_ info: NSDraggingInfo, toDirectory directoryURL: URL) -> Bool {

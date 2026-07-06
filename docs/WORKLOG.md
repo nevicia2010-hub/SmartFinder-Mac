@@ -1,5 +1,20 @@
 # Work Log
 
+## 2026-07-06
+
+### Column Drag Move Semantics Fix
+
+- Fixed a drag-and-drop bug where moving a file or folder could incorrectly create a destination named with `copy`.
+- Root cause: the move path reused the copy destination-name helper, so a normal move behaved like "keep both" copy naming instead of preserving the original item name.
+- Added transfer planning coverage that removes duplicate source URLs from a single drag operation so one drop cannot move the same item twice.
+- Changed transfer refresh handling so successful column-view moves refresh the visible column path after the operation instead of leaving stale rows pointing to old paths.
+- This is not a macOS drag-and-drop limitation; the issue was in SmartFinder's transfer naming and refresh logic.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.16.dmg`
+- Latest tag: `v0.8.16`
+
 ## 2026-07-05
 
 ### File Drag Source Fix
