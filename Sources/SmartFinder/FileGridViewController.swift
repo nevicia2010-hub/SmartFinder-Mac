@@ -978,8 +978,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         var didTransferItem = false
 
         defer {
-            if didTransferItem, shouldRefreshAfterTransfer(affectedDirectories: affectedDirectories) {
-                refresh()
+            if didTransferItem {
+                refreshAfterTransfer(affectedDirectories: affectedDirectories)
             }
         }
 
@@ -992,15 +992,73 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
     }
 
-    private func shouldRefreshAfterTransfer(affectedDirectories: [URL]) -> Bool {
-        if viewMode == .column {
-            return true
+    private func refreshAfterTransfer(affectedDirectories: [URL]) {
+        switch FileTransferPlan.refreshScope(
+            isColumnView: viewMode == .column,
+            currentFolderURL: currentFolderURL,
+            affectedDirectoryURLs: affectedDirectories
+        ) {
+        case .none:
+            break
+        case .currentFolder:
+            refresh()
+        case .visibleColumns:
+            refreshAffectedColumnFolders(affectedDirectories)
+        }
+    }
+
+    private func refreshAffectedColumnFolders(_ affectedDirectories: [URL]) {
+        let affectedPaths = Set(affectedDirectories.map { $0.standardizedFileURL.path })
+        guard !affectedPaths.isEmpty else {
+            return
         }
 
-        guard let currentFolderURL = currentFolderURL?.standardizedFileURL else {
-            return false
+        let options = DirectoryLoadOptions(includesHiddenItems: includesHiddenItems)
+        var reloadedIndexes: [Int] = []
+
+        for index in columnFolders.indices {
+            let folder = columnFolders[index]
+            let folderURL = folder.url.standardizedFileURL
+            guard affectedPaths.contains(folderURL.path) else {
+                continue
+            }
+
+            let items = (try? directoryStore.loadItems(in: folder.url, options: options)) ?? []
+            let visibleItems: [FileItem]
+            if folderURL == currentFolderURL?.standardizedFileURL {
+                allItems = items
+                updateDisplayedItems()
+                visibleItems = displayedItems
+            } else {
+                visibleItems = sortedItems(items)
+            }
+
+            columnFolders[index] = ColumnFolder(
+                url: folder.url,
+                items: visibleItems,
+                selectedURL: folder.selectedURL
+            )
+            reloadedIndexes.append(index)
         }
-        return affectedDirectories.contains(currentFolderURL)
+
+        for index in reloadedIndexes where columnTables.indices.contains(index) {
+            updateColumnTableHeight(at: index)
+            columnTables[index].reloadData()
+        }
+
+        selectColumnPathRows()
+        updateStatus()
+    }
+
+    private func updateColumnTableHeight(at index: Int) {
+        guard columnTables.indices.contains(index) else {
+            return
+        }
+
+        let table = columnTables[index]
+        let viewportHeight = table.enclosingScrollView?.contentSize.height ?? table.frame.height
+        let tableHeight = max(viewportHeight, CGFloat(itemsForColumn(at: index).count) * 33)
+        table.setFrameSize(NSSize(width: table.frame.width, height: tableHeight))
     }
 
     private func performDrop(_ info: NSDraggingInfo, toDirectory directoryURL: URL) -> Bool {

@@ -2,6 +2,18 @@
 
 ## 2026-07-06
 
+### Column Drag Local Refresh Fix
+
+- Replaced the column-view post-drag whole-browser reload with a local visible-column refresh.
+- Dragging files or folders in column view now reloads only directories affected by the transfer, keeping the rest of the column stack mounted in place.
+- Added transfer refresh-scope coverage so column-view transfers choose visible-column updates while icon/list views still reload the current folder only when it changed.
+- This reduces the visible flash after drag-and-drop without returning to the stale-path behavior fixed in `0.8.16`.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.17.dmg`
+- Latest tag: `v0.8.17`
+
 ### Column Drag Move Semantics Fix
 
 - Fixed a drag-and-drop bug where moving a file or folder could incorrectly create a destination named with `copy`.

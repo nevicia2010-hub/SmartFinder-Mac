@@ -95,6 +95,30 @@ expect(
     ) == [moveTargetDirectory.standardizedFileURL, operationsDirectory.standardizedFileURL],
     "drag transfer planning should mark both source and target folders as stale after a move"
 )
+expect(
+    FileTransferPlan.refreshScope(
+        isColumnView: true,
+        currentFolderURL: moveTargetDirectory,
+        affectedDirectoryURLs: [moveTargetDirectory, operationsDirectory]
+    ) == .visibleColumns,
+    "column-view transfers should refresh visible columns instead of reloading the whole browser"
+)
+expect(
+    FileTransferPlan.refreshScope(
+        isColumnView: false,
+        currentFolderURL: operationsDirectory,
+        affectedDirectoryURLs: [moveTargetDirectory, operationsDirectory]
+    ) == .currentFolder,
+    "icon and list transfers should reload the current folder only when that folder changed"
+)
+expect(
+    FileTransferPlan.refreshScope(
+        isColumnView: false,
+        currentFolderURL: operationsDirectory,
+        affectedDirectoryURLs: [moveTargetDirectory]
+    ) == .none,
+    "icon and list transfers should skip reloads when the current folder did not change"
+)
 
 let visibleDirectoryFile = operationsDirectory.appendingPathComponent("visible.txt")
 let hiddenDirectoryFile = operationsDirectory.appendingPathComponent(".hidden.txt")

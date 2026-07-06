@@ -1,5 +1,11 @@
 import Foundation
 
+public enum FileTransferRefreshScope: Equatable, Sendable {
+    case none
+    case currentFolder
+    case visibleColumns
+}
+
 public enum FileTransferPlan {
     public static func uniqueSourceURLs(_ urls: [URL]) -> [URL] {
         var seen = Set<String>()
@@ -17,6 +23,25 @@ public enum FileTransferPlan {
         uniqueSourceURLs(sourceURLs)
             .map { $0.deletingLastPathComponent().standardizedFileURL }
             .appendingUnique(targetDirectoryURL.standardizedFileURL)
+    }
+
+    public static func refreshScope(
+        isColumnView: Bool,
+        currentFolderURL: URL?,
+        affectedDirectoryURLs: [URL]
+    ) -> FileTransferRefreshScope {
+        guard !affectedDirectoryURLs.isEmpty else {
+            return .none
+        }
+        if isColumnView {
+            return .visibleColumns
+        }
+        guard let currentFolderURL = currentFolderURL?.standardizedFileURL else {
+            return .none
+        }
+        return affectedDirectoryURLs.map(\.standardizedFileURL).contains(currentFolderURL)
+            ? .currentFolder
+            : .none
     }
 }
 
