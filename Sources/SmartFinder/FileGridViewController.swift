@@ -197,6 +197,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private var displayedItems: [FileItem] = []
     private var columnFolders: [ColumnFolder] = []
     private var columnTables: [SmartTableView] = []
+    private var columnRootURL: URL?
     private var columnNavigationToken = UUID()
     private var filterText = ""
     private var iconSize: CGFloat = 96
@@ -378,6 +379,10 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             return
         }
         load(folderURL: currentFolderURL)
+    }
+
+    func setColumnRootURL(_ url: URL?) {
+        columnRootURL = url?.standardizedFileURL
     }
 
     func setIconSize(_ newSize: CGFloat) {
@@ -1906,7 +1911,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     private func rebuildColumnView(for focusedFolderURL: URL) {
         let options = DirectoryLoadOptions(includesHiddenItems: includesHiddenItems)
-        let columns = ColumnViewPath.columns(for: focusedFolderURL)
+        let columns = ColumnViewPath.columns(for: focusedFolderURL, rootURL: columnRootURL)
         columnFolders = columns.map { column in
             let items: [FileItem]
             if column.folderURL.standardizedFileURL == focusedFolderURL.standardizedFileURL {

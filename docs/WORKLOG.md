@@ -2,6 +2,17 @@
 
 ## 2026-07-09
 
+### Finder-Style Column Root
+
+- Fixed column view so sidebar-selected sources act as the column root, matching Finder behavior.
+- External volumes such as `/Volumes/lavoro` now open directly to the volume contents instead of showing technical parent columns for `/` and `/Volumes`.
+- Added core coverage for anchored column paths.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.26.dmg`
+- Latest tag: `v0.8.26`
+
 ### System Disk Symlink Fix
 
 - Fixed system disk entries such as `/Volumes/Macintosh HD` being treated as files when macOS exposes them as symbolic links to `/`.

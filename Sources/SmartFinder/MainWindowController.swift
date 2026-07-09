@@ -1356,10 +1356,28 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         return SidebarLocation(name: name, url: url, icon: icon, isEjectable: false)
     }
 
-    private func navigate(to url: URL, recordHistory: Bool) {
+    private func navigate(to url: URL, recordHistory: Bool, columnRootURL: URL? = nil) {
         updateLocation(to: url, recordHistory: recordHistory, clearsSearch: true)
         gridController.applyFilter("")
+        gridController.setColumnRootURL(columnRootURL ?? inferredColumnRootURL(for: url))
         gridController.load(folderURL: url)
+    }
+
+    private func inferredColumnRootURL(for url: URL) -> URL? {
+        sidebarURLs
+            .map(\.standardizedFileURL)
+            .filter { sourceURL in
+                contains(url: url, in: sourceURL)
+            }
+            .max { left, right in
+                left.path.count < right.path.count
+            }
+    }
+
+    private func contains(url: URL, in sourceURL: URL) -> Bool {
+        let path = url.standardizedFileURL.path
+        let sourcePath = sourceURL.standardizedFileURL.path
+        return sourcePath == "/" || path == sourcePath || path.hasPrefix(sourcePath + "/")
     }
 
     private func updateLocation(to url: URL, recordHistory: Bool, clearsSearch: Bool) {
@@ -1957,7 +1975,8 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         guard sidebarURLs.indices.contains(sender.tag) else {
             return
         }
-        navigate(to: sidebarURLs[sender.tag], recordHistory: true)
+        let url = sidebarURLs[sender.tag]
+        navigate(to: url, recordHistory: true, columnRootURL: url)
     }
 
     private func dropFileURLs(_ urls: [URL], toSidebarLocationAt index: Int, operation: FileTransferOperation) -> Bool {

@@ -376,6 +376,17 @@ expect(
     columnPath.map { $0.selectedURL?.path ?? "" } == ["/Users", "/Users/bingwang", "/Users/bingwang/Pictures", "/Users/bingwang/Pictures/RAW", ""],
     "column view path should select the next folder in each parent column"
 )
+let volumeRootURL = URL(fileURLWithPath: "/Volumes/lavoro", isDirectory: true)
+let volumeChildURL = volumeRootURL.appendingPathComponent("01_2026_工作资料", isDirectory: true)
+let anchoredColumnPath = ColumnViewPath.columns(for: volumeChildURL, rootURL: volumeRootURL)
+expect(
+    anchoredColumnPath.map(\.folderURL.path) == ["/Volumes/lavoro", "/Volumes/lavoro/01_2026_工作资料"],
+    "column view path should start at the selected sidebar source instead of showing technical parent folders"
+)
+expect(
+    anchoredColumnPath.map { $0.selectedURL?.path ?? "" } == ["/Volumes/lavoro/01_2026_工作资料", ""],
+    "anchored column view path should select the next folder within the sidebar source"
+)
 let replacedColumnNames = ColumnViewSelectionUpdate.replaceTrailingColumns(
     in: ["root", "Users", "old-home", "old-child"],
     selectedColumnIndex: 1,
