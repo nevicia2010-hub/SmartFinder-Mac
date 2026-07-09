@@ -933,8 +933,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
 
         do {
-            try fileOperations.rename(item.url, to: newName)
-            refresh()
+            let renamedURL = try fileOperations.rename(item.url, to: newName)
+            refreshAfterRename(originalURL: item.url, renamedURL: renamedURL, itemWasDirectory: item.isDirectory)
         } catch {
             showOperationError(error)
         }
@@ -1083,6 +1083,26 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             refreshAffectedColumnFolders([directoryURL])
         } else {
             refresh()
+        }
+    }
+
+    private func refreshAfterRename(originalURL: URL, renamedURL: URL, itemWasDirectory: Bool) {
+        let folderToLoad = FileRenameNavigationPolicy.folderToLoadAfterRename(
+            originalURL: originalURL,
+            renamedURL: renamedURL,
+            renamedItemIsDirectory: itemWasDirectory,
+            currentFolderURL: currentFolderURL
+        )
+
+        guard let folderToLoad else {
+            refresh()
+            return
+        }
+
+        if folderToLoad.standardizedFileURL == currentFolderURL?.standardizedFileURL {
+            refresh()
+        } else {
+            load(folderURL: folderToLoad)
         }
     }
 

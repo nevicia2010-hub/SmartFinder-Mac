@@ -142,6 +142,45 @@ expect(
     ) == operationsDirectory.standardizedFileURL,
     "removing a child item should keep the current folder loaded"
 )
+let originalRenamedFolder = operationsDirectory.appendingPathComponent("Folder Before Rename", isDirectory: true)
+let newRenamedFolder = operationsDirectory.appendingPathComponent("Folder After Rename", isDirectory: true)
+let renamedChildFolder = originalRenamedFolder.appendingPathComponent("Child", isDirectory: true)
+expect(
+    FileRenameNavigationPolicy.folderToLoadAfterRename(
+        originalURL: originalRenamedFolder,
+        renamedURL: newRenamedFolder,
+        renamedItemIsDirectory: true,
+        currentFolderURL: originalRenamedFolder
+    ) == operationsDirectory.standardizedFileURL,
+    "renaming the currently loaded folder should return to its parent instead of opening the renamed folder"
+)
+expect(
+    FileRenameNavigationPolicy.folderToLoadAfterRename(
+        originalURL: originalRenamedFolder,
+        renamedURL: newRenamedFolder,
+        renamedItemIsDirectory: true,
+        currentFolderURL: renamedChildFolder
+    ) == operationsDirectory.standardizedFileURL,
+    "renaming an ancestor of the current folder should return to the renamed folder's parent"
+)
+expect(
+    FileRenameNavigationPolicy.folderToLoadAfterRename(
+        originalURL: originalRenamedFolder,
+        renamedURL: newRenamedFolder,
+        renamedItemIsDirectory: true,
+        currentFolderURL: operationsDirectory
+    ) == operationsDirectory.standardizedFileURL,
+    "renaming a child folder should keep the current folder loaded"
+)
+expect(
+    FileRenameNavigationPolicy.folderToLoadAfterRename(
+        originalURL: operationsDirectory.appendingPathComponent("note.txt"),
+        renamedURL: operationsDirectory.appendingPathComponent("renamed-note.txt"),
+        renamedItemIsDirectory: false,
+        currentFolderURL: operationsDirectory
+    ) == operationsDirectory.standardizedFileURL,
+    "renaming a file should keep the current folder loaded"
+)
 
 let visibleDirectoryFile = operationsDirectory.appendingPathComponent("visible.txt")
 let hiddenDirectoryFile = operationsDirectory.appendingPathComponent(".hidden.txt")

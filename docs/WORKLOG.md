@@ -2,6 +2,18 @@
 
 ## 2026-07-09
 
+### Rename Navigation Fix
+
+- Fixed a column-view rename flow where confirming a folder rename could leave SmartFinder inside the renamed folder.
+- Renaming the currently loaded folder, or an ancestor of it, now returns to the renamed folder's parent instead of treating Return as an open-folder action.
+- Renaming a child folder or regular file still keeps and refreshes the current folder.
+- Added core coverage for post-rename navigation decisions.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.23.dmg`
+- Latest tag: `v0.8.23`
+
 ### Trash Navigation Fix
 
 - Fixed a column-view bug where right-clicking a folder could navigate into that folder before moving it to Trash.
