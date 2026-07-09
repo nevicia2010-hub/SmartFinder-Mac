@@ -569,7 +569,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         proposedRow row: Int,
         proposedDropOperation dropOperation: NSTableView.DropOperation
     ) -> NSDragOperation {
-        guard let targetURL = dropTargetDirectory(for: tableView, row: row, dropOperation: dropOperation),
+        if let hit = tableHitItem(for: tableView, draggingInfo: info),
+           hit.item.isDirectory {
+            tableView.setDropRow(hit.row, dropOperation: .on)
+        }
+
+        guard let targetURL = dropTargetDirectory(for: tableView, draggingInfo: info, row: row, dropOperation: dropOperation),
               canAcceptDrop(info, toDirectory: targetURL) else {
             return []
         }
@@ -582,7 +587,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         row: Int,
         dropOperation: NSTableView.DropOperation
     ) -> Bool {
-        guard let targetURL = dropTargetDirectory(for: tableView, row: row, dropOperation: dropOperation) else {
+        guard let targetURL = dropTargetDirectory(for: tableView, draggingInfo: info, row: row, dropOperation: dropOperation) else {
             return false
         }
         return performDrop(info, toDirectory: targetURL)
@@ -613,8 +618,16 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         proposedIndexPath proposedDropIndexPath: AutoreleasingUnsafeMutablePointer<NSIndexPath>,
         dropOperation proposedDropOperation: UnsafeMutablePointer<NSCollectionView.DropOperation>
     ) -> NSDragOperation {
+        if let hit = collectionHitItem(for: collectionView, draggingInfo: draggingInfo),
+           hit.item.isDirectory {
+            proposedDropIndexPath.pointee = hit.indexPath as NSIndexPath
+            proposedDropOperation.pointee = .on
+        }
+
         guard let targetURL = collectionDropTargetDirectory(
-            indexPath: proposedDropIndexPath.pointee as IndexPath?,
+            for: collectionView,
+            draggingInfo: draggingInfo,
+            proposedIndexPath: proposedDropIndexPath.pointee as IndexPath?,
             dropOperation: proposedDropOperation.pointee
         ), canAcceptDrop(draggingInfo, toDirectory: targetURL) else {
             return []
@@ -628,7 +641,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         indexPath: IndexPath,
         dropOperation: NSCollectionView.DropOperation
     ) -> Bool {
-        guard let targetURL = collectionDropTargetDirectory(indexPath: indexPath, dropOperation: dropOperation) else {
+        guard let targetURL = collectionDropTargetDirectory(
+            for: collectionView,
+            draggingInfo: draggingInfo,
+            proposedIndexPath: indexPath,
+            dropOperation: dropOperation
+        ) else {
             return false
         }
         return performDrop(draggingInfo, toDirectory: targetURL)
@@ -1157,19 +1175,51 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         return objects.map { $0 as URL }.filter(\.isFileURL)
     }
 
-    private func collectionDropTargetDirectory(indexPath: IndexPath?, dropOperation: NSCollectionView.DropOperation) -> URL? {
-        if dropOperation == .on,
-           let indexPath,
-           displayedItems.indices.contains(indexPath.item) {
-            let item = displayedItems[indexPath.item]
-            if item.isDirectory {
-                return item.url
-            }
-        }
-        return currentFolderURL
+    private func collectionDropTargetDirectory(
+        for collectionView: NSCollectionView,
+        draggingInfo: NSDraggingInfo,
+        proposedIndexPath: IndexPath?,
+        dropOperation: NSCollectionView.DropOperation
+    ) -> URL? {
+        let hitItem = collectionHitItem(for: collectionView, draggingInfo: draggingInfo)?.item
+            ?? collectionProposedDropItem(indexPath: proposedIndexPath, dropOperation: dropOperation)
+        return FileDropTargetPolicy.targetDirectory(
+            defaultDirectoryURL: currentFolderURL,
+            hitItemURL: hitItem?.url,
+            hitItemIsDirectory: hitItem?.isDirectory ?? false
+        )
     }
 
-    private func dropTargetDirectory(for tableView: NSTableView, row: Int, dropOperation: NSTableView.DropOperation) -> URL? {
+    private func collectionHitItem(
+        for collectionView: NSCollectionView,
+        draggingInfo: NSDraggingInfo
+    ) -> (indexPath: IndexPath, item: FileItem)? {
+        let point = collectionView.convert(draggingInfo.draggingLocation, from: nil)
+        guard let indexPath = collectionView.indexPathForItem(at: point),
+              displayedItems.indices.contains(indexPath.item) else {
+            return nil
+        }
+        return (indexPath, displayedItems[indexPath.item])
+    }
+
+    private func collectionProposedDropItem(
+        indexPath: IndexPath?,
+        dropOperation: NSCollectionView.DropOperation
+    ) -> FileItem? {
+        guard dropOperation == .on,
+              let indexPath,
+              displayedItems.indices.contains(indexPath.item) else {
+            return nil
+        }
+        return displayedItems[indexPath.item]
+    }
+
+    private func dropTargetDirectory(
+        for tableView: NSTableView,
+        draggingInfo: NSDraggingInfo,
+        row: Int,
+        dropOperation: NSTableView.DropOperation
+    ) -> URL? {
         let items: [FileItem]
         let defaultFolder: URL?
 
@@ -1183,13 +1233,50 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             return currentFolderURL
         }
 
-        if dropOperation == .on,
-           items.indices.contains(row),
-           items[row].isDirectory {
-            return items[row].url
+        let hitItem = tableHitItem(for: tableView, draggingInfo: draggingInfo)?.item
+            ?? tableProposedDropItem(items: items, row: row, dropOperation: dropOperation)
+        return FileDropTargetPolicy.targetDirectory(
+            defaultDirectoryURL: defaultFolder,
+            hitItemURL: hitItem?.url,
+            hitItemIsDirectory: hitItem?.isDirectory ?? false
+        )
+    }
+
+    private func tableHitItem(
+        for tableView: NSTableView,
+        draggingInfo: NSDraggingInfo
+    ) -> (row: Int, item: FileItem)? {
+        let point = tableView.convert(draggingInfo.draggingLocation, from: nil)
+        let row = tableView.row(at: point)
+        guard row >= 0 else {
+            return nil
         }
 
-        return defaultFolder
+        let items: [FileItem]
+        if tableView === self.tableView {
+            items = displayedItems
+        } else if let columnIndex = columnIndex(for: tableView) {
+            items = itemsForColumn(at: columnIndex)
+        } else {
+            return nil
+        }
+
+        guard items.indices.contains(row) else {
+            return nil
+        }
+        return (row, items[row])
+    }
+
+    private func tableProposedDropItem(
+        items: [FileItem],
+        row: Int,
+        dropOperation: NSTableView.DropOperation
+    ) -> FileItem? {
+        guard dropOperation == .on,
+              items.indices.contains(row) else {
+            return nil
+        }
+        return items[row]
     }
 
     func compressSelection() {

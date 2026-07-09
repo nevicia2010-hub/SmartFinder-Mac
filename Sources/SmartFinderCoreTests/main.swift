@@ -510,6 +510,33 @@ expect(
     FileDragOperationPolicy.sourceOperations.count == 2,
     "file browser drag sources should expose only copy and move operations"
 )
+let dropDefaultDirectory = URL(fileURLWithPath: "/tmp/drop-default", isDirectory: true)
+let dropFolderItem = dropDefaultDirectory.appendingPathComponent("Folder B", isDirectory: true)
+let dropFileItem = dropDefaultDirectory.appendingPathComponent("note.txt", isDirectory: false)
+expect(
+    FileDropTargetPolicy.targetDirectory(
+        defaultDirectoryURL: dropDefaultDirectory,
+        hitItemURL: dropFolderItem,
+        hitItemIsDirectory: true
+    ) == dropFolderItem.standardizedFileURL,
+    "dropping on a folder item should target that folder even when AppKit proposes an insertion drop"
+)
+expect(
+    FileDropTargetPolicy.targetDirectory(
+        defaultDirectoryURL: dropDefaultDirectory,
+        hitItemURL: dropFileItem,
+        hitItemIsDirectory: false
+    ) == dropDefaultDirectory.standardizedFileURL,
+    "dropping on a regular file should keep the current folder as the target"
+)
+expect(
+    FileDropTargetPolicy.targetDirectory(
+        defaultDirectoryURL: dropDefaultDirectory,
+        hitItemURL: nil,
+        hitItemIsDirectory: false
+    ) == dropDefaultDirectory.standardizedFileURL,
+    "dropping on empty browser space should target the current folder"
+)
 
 let pathFormatURLs = [
     URL(fileURLWithPath: "/Volumes/Photo Archive/Test File.txt"),

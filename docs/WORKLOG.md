@@ -2,6 +2,18 @@
 
 ## 2026-07-09
 
+### Folder Drop Target Fix
+
+- Improved in-window drag-and-drop so dropping folder A onto folder B targets folder B even when AppKit reports the proposed drop as an insertion position.
+- Applied the same hit-tested folder target rule to icon view, list view, and column view.
+- Default drag still moves the item into the target folder; Option-drag still copies.
+- Added core coverage for the folder-drop target rule so regular files and empty space continue targeting the current folder.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.20.dmg`
+- Latest tag: `v0.8.20`
+
 ### Context Menu Open With
 
 - Added a Finder-style Open With submenu to the file context menu for a single selected file.
