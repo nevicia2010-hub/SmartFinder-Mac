@@ -2,6 +2,19 @@
 
 ## 2026-07-09
 
+### Photo Companion Protection
+
+- Added lightweight same-stem photo companion detection for RAW, rendered image, and sidecar files.
+- Copy, move, drag/drop, paste, move to Trash, and rename operations now keep common groups such as `IMG_1001.CR3`, `IMG_1001.JPG`, and `IMG_1001.XMP` together.
+- Supported sidecar extensions include `xmp`, `aae`, `dop`, `pp3`, `on1`, and `cos`.
+- The policy checks sibling file names only during explicit operations and does not decode images, index folders, or scan disks.
+- Added core coverage for companion detection, grouped transfer, and grouped rename.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.31.dmg`
+- Latest tag: `v0.8.31`
+
 ### Photo Info Pane
 
 - Upgraded the right-side details pane into a lightweight photo info pane with a close control and a toolbar Info button.

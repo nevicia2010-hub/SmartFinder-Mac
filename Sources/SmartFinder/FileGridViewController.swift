@@ -969,7 +969,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
 
         do {
-            let renamedURL = try fileOperations.rename(item.url, to: newName)
+            let renamedURL = try fileOperations.renamePhotoCompanionGroup(item.url, to: newName).first
+                ?? fileOperations.rename(item.url, to: newName)
             refreshAfterRename(originalURL: item.url, renamedURL: renamedURL, itemWasDirectory: item.isDirectory)
         } catch {
             showOperationError(error)
@@ -977,7 +978,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func moveSelectedToTrash() {
-        let urls = selectedItems().map(\.url)
+        let urls = PhotoCompanionFilePolicy.expandedSourceURLs(for: selectedItems().map(\.url))
         guard !urls.isEmpty else {
             return
         }
@@ -1011,7 +1012,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func writeSelectedFileURLsToPasteboard(operationMarker: String) {
-        let urls = selectedItems().map(\.url)
+        let urls = PhotoCompanionFilePolicy.expandedSourceURLs(for: selectedItems().map(\.url))
         guard !urls.isEmpty else {
             return
         }
@@ -1152,7 +1153,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func transferItems(_ urls: [URL], toDirectory directoryURL: URL, operation: FileTransferOperation) throws {
-        let sourceURLs = FileTransferPlan.uniqueSourceURLs(urls)
+        let sourceURLs = PhotoCompanionFilePolicy.expandedSourceURLs(
+            for: FileTransferPlan.uniqueSourceURLs(urls)
+        )
         let targetURL = directoryURL.standardizedFileURL
         let affectedDirectories = FileTransferPlan.affectedDirectoryURLs(
             sourceURLs: sourceURLs,
@@ -1595,13 +1598,10 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         let operation = FileClipboardPolicy.operation(forMarker: marker)
 
         do {
-            for url in urls {
-                try fileOperations.transfer(url, toDirectory: currentFolderURL, operation: operation)
-            }
+            try transferItems(urls, toDirectory: currentFolderURL, operation: operation)
             if operation == .move {
                 NSPasteboard.general.clearContents()
             }
-            refresh()
         } catch {
             showOperationError(error)
         }

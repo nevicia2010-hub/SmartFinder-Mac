@@ -79,6 +79,67 @@ try "drag-move".write(to: transferMoveSource, atomically: true, encoding: .utf8)
 let transferredMove = try fileOperations.transfer(transferMoveSource, toDirectory: moveTargetDirectory, operation: .move)
 expect(!FileManager.default.fileExists(atPath: transferMoveSource.path), "move transfer should remove the source item")
 expect(FileManager.default.fileExists(atPath: transferredMove.path), "move transfer should create the destination item")
+
+let photoGroupDirectory = operationsDirectory.appendingPathComponent("photo-group", isDirectory: true)
+let photoGroupTargetDirectory = operationsDirectory.appendingPathComponent("photo-group-target", isDirectory: true)
+try FileManager.default.createDirectory(at: photoGroupDirectory, withIntermediateDirectories: true)
+try FileManager.default.createDirectory(at: photoGroupTargetDirectory, withIntermediateDirectories: true)
+let rawPhotoURL = photoGroupDirectory.appendingPathComponent("IMG_1001.CR3")
+let renderedPhotoURL = photoGroupDirectory.appendingPathComponent("IMG_1001.JPG")
+let xmpSidecarURL = photoGroupDirectory.appendingPathComponent("IMG_1001.XMP")
+let unrelatedRawURL = photoGroupDirectory.appendingPathComponent("IMG_1002.CR3")
+try "raw".write(to: rawPhotoURL, atomically: true, encoding: .utf8)
+try "jpg".write(to: renderedPhotoURL, atomically: true, encoding: .utf8)
+try "xmp".write(to: xmpSidecarURL, atomically: true, encoding: .utf8)
+try "other".write(to: unrelatedRawURL, atomically: true, encoding: .utf8)
+
+let photoCompanionURLs = PhotoCompanionFilePolicy.companionURLs(for: rawPhotoURL)
+expect(
+    photoCompanionURLs.map(\.lastPathComponent).sorted() == ["IMG_1001.JPG", "IMG_1001.XMP"],
+    "photo companion lookup should include same-stem rendered and sidecar files only"
+)
+expect(
+    PhotoCompanionFilePolicy.expandedSourceURLs(for: [rawPhotoURL, renderedPhotoURL])
+        .map(\.lastPathComponent)
+        .sorted() == ["IMG_1001.CR3", "IMG_1001.JPG", "IMG_1001.XMP"],
+    "photo companion expansion should deduplicate selected group members"
+)
+
+let movedPhotoGroup = try fileOperations.transferPhotoCompanionGroup(
+    [rawPhotoURL],
+    toDirectory: photoGroupTargetDirectory,
+    operation: .move
+)
+expect(
+    movedPhotoGroup.map(\.lastPathComponent).sorted() == ["IMG_1001.CR3", "IMG_1001.JPG", "IMG_1001.XMP"],
+    "group move should return all moved photo companion files"
+)
+expect(
+    ["IMG_1001.CR3", "IMG_1001.JPG", "IMG_1001.XMP"].allSatisfy {
+        FileManager.default.fileExists(atPath: photoGroupTargetDirectory.appendingPathComponent($0).path)
+    },
+    "group move should keep RAW, rendered image, and sidecar together"
+)
+expect(
+    FileManager.default.fileExists(atPath: unrelatedRawURL.path),
+    "group move should leave unrelated same-extension photos behind"
+)
+
+let renamedPhotoGroup = try fileOperations.renamePhotoCompanionGroup(
+    photoGroupTargetDirectory.appendingPathComponent("IMG_1001.CR3"),
+    to: "Keeper.CR3"
+)
+expect(
+    renamedPhotoGroup.map(\.lastPathComponent).sorted() == ["Keeper.CR3", "Keeper.JPG", "Keeper.XMP"],
+    "group rename should apply the new base name to same-stem companions"
+)
+expect(
+    ["Keeper.CR3", "Keeper.JPG", "Keeper.XMP"].allSatisfy {
+        FileManager.default.fileExists(atPath: photoGroupTargetDirectory.appendingPathComponent($0).path)
+    },
+    "group rename should preserve companion extensions"
+)
+
 let duplicateDragURLs = FileTransferPlan.uniqueSourceURLs([
     transferMoveSource,
     transferMoveSource,

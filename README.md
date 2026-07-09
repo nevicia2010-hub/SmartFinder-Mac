@@ -23,6 +23,7 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 ## What It Is For
 
 - Browse photo and RAW folders with real visual thumbnails.
+- Keep common RAW/JPEG/sidecar groups together during everyday file organization.
 - Keep PDF, Office, archive, audio, code, and unknown files as familiar macOS system icons.
 - Work through external SSDs, camera-card dumps, project folders, and mixed document folders without asking macOS to render every document page.
 - Check one or a few photo or RAW files quickly in the right-side photo info pane without launching Bridge or Lightroom.
@@ -47,6 +48,7 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 - A lightweight right-side info pane can show selected item metadata and photo EXIF/GPS basics without generating document thumbnails.
 - Photo info includes capture date, camera model, lens, pixel dimensions, resolution, ISO, focal length, aperture, shutter speed, exposure compensation, white balance, color space, and GPS when available.
 - GPS-tagged photos can be opened in Apple Maps from the info pane.
+- Photo companion protection keeps same-stem RAW, rendered image, and sidecar files together for copy, move, drag/drop, paste, move to Trash, and rename operations.
 - The Actions menu includes Copy To, Move To, New Text File, New Markdown File, and New CSV File for common folder work.
 - The tag menu writes real Finder color labels instead of text-only tags; tagged folders use the matching folder icon color, while tagged files keep their system icons with a compact color indicator.
 - The window uses a Finder-like full-height sidebar, transparent titlebar, compact breadcrumb row, and neutral toolbar symbols.
@@ -117,13 +119,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.8.30.dmg`
+- `dist/SmartFinder-0.8.31.dmg`
 
 The app is ad-hoc signed for local use. See Security Notice above for the first-launch Gatekeeper warning on other Macs.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.8.30.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.8.31.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 
@@ -132,6 +134,8 @@ SmartFinder treats common RAW photo extensions as thumbnail-eligible image files
 Thumbnail generation still depends on macOS Quick Look and the RAW codecs available on the current system. If macOS cannot decode a specific RAW file, SmartFinder falls back to the normal system type icon.
 
 Photo metadata is read through macOS ImageIO. SmartFinder focuses on mainstream camera files and does not bundle third-party RAW decoders. If macOS cannot read a proprietary or unusual RAW file, SmartFinder shows the available basic file metadata and skips missing camera fields.
+
+Photo companion protection is file-name based. When SmartFinder operates on a known photo file such as `IMG_0001.CR3`, it checks the same folder for known same-stem companions such as `IMG_0001.JPG`, `IMG_0001.HEIC`, `IMG_0001.XMP`, `IMG_0001.AAE`, `IMG_0001.DOP`, `IMG_0001.PP3`, `IMG_0001.ON1`, or `IMG_0001.COS`. Matching companions are included in copy, move, drag/drop, paste, move to Trash, and rename operations. This does not decode images, inspect whole folders in the background, or create a photo catalog.
 
 ## Preview Strategy
 
@@ -143,6 +147,7 @@ SmartFinder is intentionally selective about content thumbnails:
 - List view uses metadata and system icons only; it does not run the thumbnail pipeline.
 - Column view uses metadata and system icons only; it does not run the thumbnail pipeline.
 - The info pane uses file metadata, system icons, and selected-file photo metadata only when the pane is visible, so it does not start a heavy preview database.
+- Photo companion protection checks sibling file names only during explicit file operations; it does not create a background index.
 - Toolbar menus are created on demand and operate on the current folder or current selection; SmartFinder does not run a full-disk indexer or pre-render document thumbnails.
 - Status size totals only selected regular files with known byte sizes; folders are not recursively scanned in the background.
 - Folder size calculations are manual, cancellable, and run only for the selected folder.

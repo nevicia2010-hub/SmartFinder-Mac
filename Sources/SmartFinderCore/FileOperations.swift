@@ -3,6 +3,7 @@ import Foundation
 public enum FileOperationError: Error, LocalizedError {
     case emptyCompressionSelection
     case compressionFailed(String)
+    case destinationExists(String)
 
     public var errorDescription: String? {
         switch self {
@@ -10,6 +11,8 @@ public enum FileOperationError: Error, LocalizedError {
             return "No files were selected for compression."
         case .compressionFailed(let message):
             return message.isEmpty ? "Compression failed." : message
+        case .destinationExists(let path):
+            return "A destination file already exists: \(path)"
         }
     }
 }
@@ -77,6 +80,66 @@ public final class FileOperations {
         case .move:
             return try move(sourceURL, toDirectory: directoryURL)
         }
+    }
+
+    @discardableResult
+    public func transferPhotoCompanionGroup(
+        _ sourceURLs: [URL],
+        toDirectory directoryURL: URL,
+        operation: FileTransferOperation
+    ) throws -> [URL] {
+        let expandedURLs = PhotoCompanionFilePolicy.expandedSourceURLs(for: sourceURLs)
+        var transferredURLs: [URL] = []
+
+        for sourceURL in expandedURLs {
+            transferredURLs.append(try transfer(sourceURL, toDirectory: directoryURL, operation: operation))
+        }
+
+        return transferredURLs
+    }
+
+    @discardableResult
+    public func renamePhotoCompanionGroup(_ url: URL, to newName: String) throws -> [URL] {
+        let sourceURLs = PhotoCompanionFilePolicy.expandedSourceURLs(for: [url])
+        let parentURL = url.deletingLastPathComponent()
+        let primaryDestinationURL = parentURL.appendingPathComponent(newName)
+        let newBaseName = primaryDestinationURL.deletingPathExtension().lastPathComponent
+
+        let renamePairs: [(source: URL, destination: URL)] = sourceURLs.map { sourceURL in
+            if sourceURL.standardizedFileURL == url.standardizedFileURL {
+                return (sourceURL, primaryDestinationURL)
+            }
+            let destinationURL = parentURL
+                .appendingPathComponent(newBaseName)
+                .appendingPathExtension(sourceURL.pathExtension)
+            return (sourceURL, destinationURL)
+        }
+
+        var destinationPaths = Set<String>()
+        for pair in renamePairs {
+            let sourcePath = pair.source.standardizedFileURL.path
+            let destinationPath = pair.destination.standardizedFileURL.path
+            guard !destinationPaths.contains(destinationPath) else {
+                throw FileOperationError.destinationExists(destinationPath)
+            }
+            destinationPaths.insert(destinationPath)
+
+            if sourcePath != destinationPath, fileManager.fileExists(atPath: destinationPath) {
+                throw FileOperationError.destinationExists(destinationPath)
+            }
+        }
+
+        var renamedURLs: [URL] = []
+        for pair in renamePairs {
+            if pair.source.standardizedFileURL == pair.destination.standardizedFileURL {
+                renamedURLs.append(pair.destination)
+                continue
+            }
+            try fileManager.moveItem(at: pair.source, to: pair.destination)
+            renamedURLs.append(pair.destination)
+        }
+
+        return renamedURLs
     }
 
     @discardableResult
