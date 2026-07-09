@@ -54,7 +54,7 @@ public final class FileInfoProvider {
         var isDirectory: ObjCBool = false
         _ = fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory)
         let values = try url.resourceValues(forKeys: keys)
-        let resolvedIsDirectory = values.isDirectory ?? isDirectory.boolValue
+        let resolvedIsDirectory = values.isDirectory == true || isDirectory.boolValue
 
         return FileInfo(
             url: url,

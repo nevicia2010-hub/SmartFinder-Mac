@@ -254,6 +254,22 @@ expect(
     injectedItems.map(\.name) == ["provider-item.txt"],
     "directory loading should build file items from provider-supplied URLs"
 )
+let symlinkTargetDirectory = try fileOperations.createFolder(named: "Symlink Target", in: operationsDirectory)
+let symlinkDirectory = operationsDirectory.appendingPathComponent("Macintosh HD")
+try FileManager.default.createSymbolicLink(at: symlinkDirectory, withDestinationURL: symlinkTargetDirectory)
+let symlinkDirectoryItem = try DirectoryStore().loadItems(
+    in: operationsDirectory,
+    options: DirectoryLoadOptions(includesHiddenItems: true)
+).first { $0.url == symlinkDirectory }
+expect(
+    symlinkDirectoryItem?.isDirectory == true,
+    "directory loading should treat symbolic links that resolve to folders as folders"
+)
+let symlinkDirectoryInfo = try FileInfoProvider().info(for: symlinkDirectory)
+expect(
+    symlinkDirectoryInfo.isDirectory,
+    "file info should treat symbolic links that resolve to folders as folders"
+)
 let displayNameFile = FileItem(
     url: URL(fileURLWithPath: "/tmp/report.final.pdf"),
     name: "report.final.pdf",

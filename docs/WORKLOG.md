@@ -2,6 +2,17 @@
 
 ## 2026-07-09
 
+### System Disk Symlink Fix
+
+- Fixed system disk entries such as `/Volumes/Macintosh HD` being treated as files when macOS exposes them as symbolic links to `/`.
+- Directory loading and file info now treat symbolic links that resolve to folders as folders, so column view can enter them normally.
+- Added core coverage for folder symlink detection.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.25.dmg`
+- Latest tag: `v0.8.25`
+
 ### Tag Color Refresh Fix
 
 - Fixed tag color changes in list view and column view so folder colors update immediately after applying or clearing Finder labels.

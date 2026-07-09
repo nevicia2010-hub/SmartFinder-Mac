@@ -51,7 +51,9 @@ public final class DirectoryStore {
 
         return try urls.map { url in
             let values = try url.resourceValues(forKeys: keys)
-            let isDirectory = values.isDirectory ?? false
+            var existsAsDirectory: ObjCBool = false
+            _ = FileManager.default.fileExists(atPath: url.path, isDirectory: &existsAsDirectory)
+            let isDirectory = values.isDirectory == true || existsAsDirectory.boolValue
             return FileItem(
                 url: url,
                 name: values.localizedName ?? url.lastPathComponent,
