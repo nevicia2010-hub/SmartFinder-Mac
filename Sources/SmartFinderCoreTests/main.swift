@@ -290,19 +290,21 @@ let mountedVolumeLocations = MountedVolumeProvider.locations(from: [
     URL(fileURLWithPath: "/System/Volumes/VM"),
     URL(fileURLWithPath: "/Volumes/CameraSSD"),
     URL(fileURLWithPath: "/Volumes/Photo Archive")
+], namesByPath: [
+    "/": "Macintosh HD"
 ])
 
 expect(
-    mountedVolumeLocations.map(\.name) == ["CameraSSD", "Photo Archive"],
-    "mounted volumes should include browsable /Volumes entries only"
+    mountedVolumeLocations.map(\.name) == ["Macintosh HD", "CameraSSD", "Photo Archive"],
+    "mounted volumes should include the local system disk plus browsable /Volumes entries"
 )
 expect(
-    mountedVolumeLocations.map(\.url.path) == ["/Volumes/CameraSSD", "/Volumes/Photo Archive"],
-    "mounted volume URLs should preserve /Volumes paths"
+    mountedVolumeLocations.map(\.url.path) == ["/", "/Volumes/CameraSSD", "/Volumes/Photo Archive"],
+    "mounted volume URLs should preserve the local root and /Volumes paths"
 )
 expect(
-    mountedVolumeLocations.allSatisfy(\.isEjectable),
-    "mounted /Volumes sidebar entries should expose eject affordances"
+    mountedVolumeLocations.map(\.isEjectable) == [false, true, true],
+    "the local system disk should not expose eject while external /Volumes entries should"
 )
 expect(
     VolumeEjectFeedback.message(for: .started, volumeName: "CameraSSD") == "Ejecting CameraSSD...",

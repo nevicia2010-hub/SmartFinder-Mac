@@ -2,6 +2,18 @@
 
 ## 2026-07-09
 
+### Local Disk Sidebar Fix
+
+- Restored the local system disk (`Macintosh HD`) in the sidebar disk section.
+- The local system disk now appears before external volumes and does not show an eject control.
+- External `/Volumes/...` entries remain visible and keep the eject affordance.
+- Added core coverage for local-root and external-volume sidebar ordering.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.29.dmg`
+- Latest tag: `v0.8.29`
+
 ### Windows-Style Cut And Paste
 
 - Added Cut to the SmartFinder context menu and menu bar with `Command-X`.

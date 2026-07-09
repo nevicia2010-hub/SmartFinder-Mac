@@ -49,8 +49,9 @@ public final class MountedVolumeProvider {
         return mountedURLs.compactMap { url in
             let standardizedURL = url.standardizedFileURL
             let path = standardizedURL.path
-            guard path.hasPrefix("/Volumes/"),
-                  path != "/Volumes",
+            let isLocalSystemDisk = path == "/"
+            let isMountedVolume = path.hasPrefix("/Volumes/") && path != "/Volumes"
+            guard (isLocalSystemDisk || isMountedVolume),
                   !seenPaths.contains(path) else {
                 return nil
             }
@@ -58,14 +59,18 @@ public final class MountedVolumeProvider {
             seenPaths.insert(path)
             let fallbackName = standardizedURL.lastPathComponent.removingPercentEncoding
                 ?? standardizedURL.lastPathComponent
+            let name = namesByPath[path] ?? (isLocalSystemDisk ? "Macintosh HD" : fallbackName)
             return MountedVolumeLocation(
-                name: namesByPath[path] ?? fallbackName,
+                name: name,
                 url: standardizedURL,
-                isEjectable: true
+                isEjectable: isMountedVolume
             )
         }
         .sorted {
-            $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            if $0.url.path == "/" || $1.url.path == "/" {
+                return $0.url.path == "/"
+            }
+            return $0.name.localizedStandardCompare($1.name) == .orderedAscending
         }
     }
 }
