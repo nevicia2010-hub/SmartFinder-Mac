@@ -119,6 +119,29 @@ expect(
     ) == .none,
     "icon and list transfers should skip reloads when the current folder did not change"
 )
+let deletedFolder = operationsDirectory.appendingPathComponent("Deleted Folder", isDirectory: true)
+let deletedChildFolder = deletedFolder.appendingPathComponent("Child", isDirectory: true)
+expect(
+    FileRemovalNavigationPolicy.folderToLoadAfterRemoval(
+        removedURLs: [deletedFolder],
+        currentFolderURL: deletedFolder
+    ) == operationsDirectory.standardizedFileURL,
+    "removing the currently loaded folder should navigate back to its parent"
+)
+expect(
+    FileRemovalNavigationPolicy.folderToLoadAfterRemoval(
+        removedURLs: [deletedFolder],
+        currentFolderURL: deletedChildFolder
+    ) == operationsDirectory.standardizedFileURL,
+    "removing an ancestor of the current folder should navigate back to the removed folder's parent"
+)
+expect(
+    FileRemovalNavigationPolicy.folderToLoadAfterRemoval(
+        removedURLs: [deletedFolder],
+        currentFolderURL: operationsDirectory
+    ) == operationsDirectory.standardizedFileURL,
+    "removing a child item should keep the current folder loaded"
+)
 
 let visibleDirectoryFile = operationsDirectory.appendingPathComponent("visible.txt")
 let hiddenDirectoryFile = operationsDirectory.appendingPathComponent(".hidden.txt")

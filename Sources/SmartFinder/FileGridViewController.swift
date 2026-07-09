@@ -945,13 +945,23 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         guard !urls.isEmpty else {
             return
         }
+        let folderToLoadAfterRemoval = FileRemovalNavigationPolicy.folderToLoadAfterRemoval(
+            removedURLs: urls,
+            currentFolderURL: currentFolderURL
+        )
 
         NSWorkspace.shared.recycle(urls) { [weak self] _, error in
             DispatchQueue.main.async {
                 if let error {
                     self?.showOperationError(error)
+                    self?.refresh()
+                    return
                 }
-                self?.refresh()
+                if let folderToLoadAfterRemoval {
+                    self?.load(folderURL: folderToLoadAfterRemoval)
+                } else {
+                    self?.refresh()
+                }
             }
         }
     }

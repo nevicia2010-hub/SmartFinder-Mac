@@ -2,6 +2,18 @@
 
 ## 2026-07-09
 
+### Trash Navigation Fix
+
+- Fixed a column-view bug where right-clicking a folder could navigate into that folder before moving it to Trash.
+- After a successful Trash operation, SmartFinder now detects when the current folder is the removed folder or one of its descendants and loads the removed folder's parent instead.
+- Unaffected Trash operations still refresh the current folder normally.
+- Added core coverage for post-removal navigation decisions.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.22.dmg`
+- Latest tag: `v0.8.22`
+
 ### Multi-Selection Drag Fix
 
 - Preserved multi-selection when starting a drag from an already selected file or folder, so the drag pasteboard keeps all selected items instead of collapsing to one item.
