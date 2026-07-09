@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP_NAME="SmartFinder"
-VERSION="${VERSION:-0.8.31}"
+VERSION="${VERSION:-0.8.32}"
 BUNDLE_IDENTIFIER="${BUNDLE_IDENTIFIER:-local.smartfinder.app}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -2,11 +2,22 @@
 
 ## 2026-07-09
 
+### ACR Photo Companion Fix
+
+- Added `.acr` to photo companion sidecar detection.
+- Dragging or operating on a same-stem RAW file such as `DSCF5146.RAF` now includes `DSCF5146.acr` and `DSCF5146.xmp` when they exist in the same folder.
+- Added core coverage for `.acr` same-stem companion expansion, grouped move, and grouped rename.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.32.dmg`
+- Latest tag: `v0.8.32`
+
 ### Photo Companion Protection
 
 - Added lightweight same-stem photo companion detection for RAW, rendered image, and sidecar files.
 - Copy, move, drag/drop, paste, move to Trash, and rename operations now keep common groups such as `IMG_1001.CR3`, `IMG_1001.JPG`, and `IMG_1001.XMP` together.
-- Supported sidecar extensions include `xmp`, `aae`, `dop`, `pp3`, `on1`, and `cos`.
+- Supported sidecar extensions include `xmp`, `aae`, `acr`, `dop`, `pp3`, `on1`, and `cos`.
 - The policy checks sibling file names only during explicit operations and does not decode images, index folders, or scan disks.
 - Added core coverage for companion detection, grouped transfer, and grouped rename.
 

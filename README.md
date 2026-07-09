@@ -135,7 +135,7 @@ Thumbnail generation still depends on macOS Quick Look and the RAW codecs availa
 
 Photo metadata is read through macOS ImageIO. SmartFinder focuses on mainstream camera files and does not bundle third-party RAW decoders. If macOS cannot read a proprietary or unusual RAW file, SmartFinder shows the available basic file metadata and skips missing camera fields.
 
-Photo companion protection is file-name based. When SmartFinder operates on a known photo file such as `IMG_0001.CR3`, it checks the same folder for known same-stem companions such as `IMG_0001.JPG`, `IMG_0001.HEIC`, `IMG_0001.XMP`, `IMG_0001.AAE`, `IMG_0001.DOP`, `IMG_0001.PP3`, `IMG_0001.ON1`, or `IMG_0001.COS`. Matching companions are included in copy, move, drag/drop, paste, move to Trash, and rename operations. This does not decode images, inspect whole folders in the background, or create a photo catalog.
+Photo companion protection is file-name based. When SmartFinder operates on a known photo file such as `IMG_0001.CR3`, it checks the same folder for known same-stem companions such as `IMG_0001.JPG`, `IMG_0001.HEIC`, `IMG_0001.XMP`, `IMG_0001.AAE`, `IMG_0001.ACR`, `IMG_0001.DOP`, `IMG_0001.PP3`, `IMG_0001.ON1`, or `IMG_0001.COS`. Matching companions are included in copy, move, drag/drop, paste, move to Trash, and rename operations. This does not decode images, inspect whole folders in the background, or create a photo catalog.
 
 ## Preview Strategy
 

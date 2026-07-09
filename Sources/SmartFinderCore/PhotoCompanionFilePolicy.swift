@@ -13,7 +13,7 @@ public enum PhotoCompanionFilePolicy {
     ]
 
     private static let sidecarExtensions: Set<String> = [
-        "xmp", "aae", "dop", "pp3", "on1", "cos"
+        "xmp", "aae", "acr", "dop", "pp3", "on1", "cos"
     ]
 
     private static var groupExtensions: Set<String> {
