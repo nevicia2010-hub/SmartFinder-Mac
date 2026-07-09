@@ -144,11 +144,21 @@
 "info.changeDefault.doneMessage" = "%@ 现在是此文件类型的默认打开程序。";
 "photo.camera" = "相机";
 "photo.lens" = "镜头";
+"photo.captureDate" = "拍摄时间";
 "photo.dimensions" = "尺寸";
+"photo.resolution" = "分辨率";
 "photo.iso" = "ISO";
 "photo.focalLength" = "焦距";
 "photo.aperture" = "光圈";
 "photo.shutterSpeed" = "快门";
+"photo.exposureCompensation" = "曝光补偿";
+"photo.whiteBalance" = "白平衡";
+"photo.whiteBalance.auto" = "自动";
+"photo.whiteBalance.manual" = "手动";
+"photo.colorSpace" = "色彩空间";
+"photo.colorSpace.uncalibrated" = "未校准";
+"photo.gps" = "GPS";
+"photo.openInMaps" = "在地图中打开";
 
 "dialog.newFolder.title" = "新建文件夹";
 "dialog.newFolder.message" = "输入新文件夹名称。";
@@ -169,3 +179,10 @@
 "details.empty.subtitle" = "选择一个项目查看详细信息。";
 "details.multiple.title" = "%d 个项目";
 "details.multiple.subtitle" = "多选";
+"details.panel.title" = "信息";
+"details.photo.title" = "摄影信息";
+"details.close" = "关闭信息栏";
+"details.section.file" = "文件";
+"details.section.photo" = "摄影";
+"details.section.location" = "位置";
+"toolbar.info" = "信息";

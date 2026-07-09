@@ -144,11 +144,21 @@
 "info.changeDefault.doneMessage" = "%@ is now the default application for this file type.";
 "photo.camera" = "Camera";
 "photo.lens" = "Lens";
+"photo.captureDate" = "Capture Date";
 "photo.dimensions" = "Dimensions";
+"photo.resolution" = "Resolution";
 "photo.iso" = "ISO";
 "photo.focalLength" = "Focal Length";
 "photo.aperture" = "Aperture";
 "photo.shutterSpeed" = "Shutter";
+"photo.exposureCompensation" = "Exposure Bias";
+"photo.whiteBalance" = "White Balance";
+"photo.whiteBalance.auto" = "Auto";
+"photo.whiteBalance.manual" = "Manual";
+"photo.colorSpace" = "Color Space";
+"photo.colorSpace.uncalibrated" = "Uncalibrated";
+"photo.gps" = "GPS";
+"photo.openInMaps" = "Open in Maps";
 
 "dialog.newFolder.title" = "New Folder";
 "dialog.newFolder.message" = "Enter a name for the new folder.";
@@ -169,3 +179,10 @@
 "details.empty.subtitle" = "Select an item to view details.";
 "details.multiple.title" = "%d Items";
 "details.multiple.subtitle" = "Multiple selection";
+"details.panel.title" = "Info";
+"details.photo.title" = "Photo Info";
+"details.close" = "Close Info Pane";
+"details.section.file" = "File";
+"details.section.photo" = "Photography";
+"details.section.location" = "Location";
+"toolbar.info" = "Info";

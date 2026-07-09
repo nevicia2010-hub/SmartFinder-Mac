@@ -2,6 +2,20 @@
 
 ## 2026-07-09
 
+### Photo Info Pane
+
+- Upgraded the right-side details pane into a lightweight photo info pane with a close control and a toolbar Info button.
+- Added ImageIO-backed photo metadata fields for capture date, camera model, lens, pixel dimensions, resolution, ISO, focal length, aperture, shutter speed, exposure compensation, white balance, color space, and GPS.
+- GPS-tagged photos can open their coordinate in Apple Maps.
+- Metadata reads remain limited to the current single selected image or RAW file; SmartFinder does not scan folders or bundle third-party RAW decoders.
+- Added core coverage for the expanded photo metadata parser.
+- Clarified that the downloadable build targets Apple Silicon Macs; Intel Macs are untested and unsupported.
+
+### Version And Packaging
+
+- Current released DMG: `SmartFinder-0.8.30.dmg`
+- Latest tag: `v0.8.30`
+
 ### Local Disk Sidebar Fix
 
 - Restored the local system disk (`Macintosh HD`) in the sidebar disk section.

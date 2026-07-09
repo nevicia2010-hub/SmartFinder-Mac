@@ -8,7 +8,7 @@ Finder can show file previews, but it does not offer a simple rule like "show th
 
 SmartFinder is not a system Finder replacement. It does not replace the Desktop, file picker, Spotlight, iCloud Drive, or "Show in Finder" behavior. It is a companion window for folders where Finder's thumbnail behavior gets in the way.
 
-Requires macOS 13 Ventura or later.
+Requires macOS 13 Ventura or later on Apple Silicon Macs.
 
 ## Security Notice
 
@@ -25,6 +25,7 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 - Browse photo and RAW folders with real visual thumbnails.
 - Keep PDF, Office, archive, audio, code, and unknown files as familiar macOS system icons.
 - Work through external SSDs, camera-card dumps, project folders, and mixed document folders without asking macOS to render every document page.
+- Check one or a few photo or RAW files quickly in the right-side photo info pane without launching Bridge or Lightroom.
 - Use familiar Finder-style actions: open folders, go back and forward, sort, tag, Quick Look, copy paths, compress files, reveal items in Finder, and move files between folders.
 - Keep memory and GPU use lower by avoiding a full-disk indexer and by not pre-rendering every document thumbnail.
 
@@ -43,7 +44,9 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 - Back and forward arrows remain visible in gray when unavailable, then brighten when that direction becomes available.
 - Finder-like toolbar menus provide display presets, grouping/sorting, system sharing, real Finder color tags, and common file actions.
 - Windows Explorer-style convenience toggles are available for hidden items, file name extensions, and item selection checkboxes.
-- A lightweight details pane can show selected item metadata and photo EXIF basics without generating document thumbnails.
+- A lightweight right-side info pane can show selected item metadata and photo EXIF/GPS basics without generating document thumbnails.
+- Photo info includes capture date, camera model, lens, pixel dimensions, resolution, ISO, focal length, aperture, shutter speed, exposure compensation, white balance, color space, and GPS when available.
+- GPS-tagged photos can be opened in Apple Maps from the info pane.
 - The Actions menu includes Copy To, Move To, New Text File, New Markdown File, and New CSV File for common folder work.
 - The tag menu writes real Finder color labels instead of text-only tags; tagged folders use the matching folder icon color, while tagged files keep their system icons with a compact color indicator.
 - The window uses a Finder-like full-height sidebar, transparent titlebar, compact breadcrumb row, and neutral toolbar symbols.
@@ -77,7 +80,9 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 
 ## Requirements
 
+- Apple Silicon Mac, such as M1, M2, M3, or newer.
 - macOS 13 Ventura or later. macOS 12 Monterey and older are not supported.
+- Intel Macs are not a supported target for the downloadable build. The project may be adapted from source, but Intel behavior is untested.
 - Apple Swift command line tools.
 - Full Xcode is not required for the current Swift Package build.
 
@@ -112,19 +117,21 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.8.29.dmg`
+- `dist/SmartFinder-0.8.30.dmg`
 
 The app is ad-hoc signed for local use. See Security Notice above for the first-launch Gatekeeper warning on other Macs.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.8.29.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.8.30.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 
 SmartFinder treats common RAW photo extensions as thumbnail-eligible image files, including DNG, CR2, CR3, NEF, ARW, RAF, RW2, ORF, PEF, SRW, X3F, MEF, KDC, and related camera formats.
 
 Thumbnail generation still depends on macOS Quick Look and the RAW codecs available on the current system. If macOS cannot decode a specific RAW file, SmartFinder falls back to the normal system type icon.
+
+Photo metadata is read through macOS ImageIO. SmartFinder focuses on mainstream camera files and does not bundle third-party RAW decoders. If macOS cannot read a proprietary or unusual RAW file, SmartFinder shows the available basic file metadata and skips missing camera fields.
 
 ## Preview Strategy
 
@@ -135,7 +142,7 @@ SmartFinder is intentionally selective about content thumbnails:
 - This keeps large mixed folders easier to scan without asking macOS to render every document page.
 - List view uses metadata and system icons only; it does not run the thumbnail pipeline.
 - Column view uses metadata and system icons only; it does not run the thumbnail pipeline.
-- The details pane uses file metadata, system icons, and selected-file photo metadata only when the pane is visible, so it does not start a heavy preview database.
+- The info pane uses file metadata, system icons, and selected-file photo metadata only when the pane is visible, so it does not start a heavy preview database.
 - Toolbar menus are created on demand and operate on the current folder or current selection; SmartFinder does not run a full-disk indexer or pre-render document thumbnails.
 - Status size totals only selected regular files with known byte sizes; folders are not recursively scanned in the background.
 - Folder size calculations are manual, cancellable, and run only for the selected folder.

@@ -547,23 +547,46 @@ let photoMetadata = PhotoMetadataSummary(properties: [
     "PixelHeight": 5464,
     "{TIFF}": [
         "Make": "Canon",
-        "Model": "EOS R5"
+        "Model": "EOS R5",
+        "DateTime": "2026:07:09 09:12:13",
+        "XResolution": 300,
+        "YResolution": 300
     ],
     "{Exif}": [
+        "DateTimeOriginal": "2026:07:08 18:22:41",
         "LensModel": "RF24-70mm F2.8 L IS USM",
         "ISOSpeedRatings": [400],
         "FocalLength": 50.0,
         "FNumber": 2.8,
-        "ExposureTime": 0.005
+        "ExposureTime": 0.005,
+        "ExposureBiasValue": -0.3333333,
+        "WhiteBalance": 1,
+        "ColorSpace": 1
+    ],
+    "{GPS}": [
+        "Latitude": 45.4642,
+        "LatitudeRef": "N",
+        "Longitude": 9.19,
+        "LongitudeRef": "E"
     ]
 ])
+expect(photoMetadata.captureDate == "2026:07:08 18:22:41", "photo metadata should prefer original capture date")
 expect(photoMetadata.camera == "Canon EOS R5", "photo metadata should combine camera make and model")
 expect(photoMetadata.lens == "RF24-70mm F2.8 L IS USM", "photo metadata should expose lens model")
 expect(photoMetadata.pixelDimensions == "8192 x 5464", "photo metadata should expose pixel dimensions")
+expect(photoMetadata.resolution == "300 x 300 dpi", "photo metadata should expose image resolution when available")
 expect(photoMetadata.iso == "ISO 400", "photo metadata should expose ISO")
 expect(photoMetadata.focalLength == "50 mm", "photo metadata should format focal length")
 expect(photoMetadata.aperture == "f/2.8", "photo metadata should format aperture")
 expect(photoMetadata.shutterSpeed == "1/200 s", "photo metadata should format shutter speed")
+expect(photoMetadata.exposureCompensation == "-0.3 EV", "photo metadata should format exposure compensation")
+expect(photoMetadata.whiteBalance == "Manual", "photo metadata should map white balance mode")
+expect(photoMetadata.colorSpace == "sRGB", "photo metadata should map color space")
+expect(photoMetadata.gpsCoordinate == "45.464200, 9.190000", "photo metadata should format GPS coordinates")
+expect(
+    photoMetadata.mapsURL?.absoluteString == "http://maps.apple.com/?ll=45.464200,9.190000",
+    "photo metadata should expose an Apple Maps URL for GPS coordinates"
+)
 
 let archiveSource = operationsDirectory.appendingPathComponent("archive-source.txt")
 try "archive-me".write(to: archiveSource, atomically: true, encoding: .utf8)

@@ -180,6 +180,11 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         fallbackTitle: L10n.string("button.up", fallback: "Up"),
         action: #selector(goUp)
     )
+    private lazy var detailsButton = toolbarIconButton(
+        symbolName: "sidebar.right",
+        fallbackTitle: L10n.string("toolbar.info", fallback: "Info"),
+        action: #selector(toggleDetailsPane)
+    )
 
     private var sidebarURLs: [URL] = []
     private var breadcrumbURLs: [URL] = []
@@ -300,6 +305,9 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         }
         secondaryGridController.onKeyboardShortcut = { [weak self] shortcut in
             self?.handleWindowKeyboardShortcut(shortcut) ?? false
+        }
+        detailsPane.onClose = { [weak self] in
+            self?.setDetailsPaneVisible(false)
         }
 
         let contentView = AppearanceRefreshView()
@@ -764,6 +772,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
             toolbarLabeledButton(shareButton, label: L10n.string("toolbar.share", fallback: "Share")),
             toolbarLabeledButton(tagButton, label: L10n.string("toolbar.tags", fallback: "Tags")),
             toolbarLabeledButton(actionButton, label: L10n.string("toolbar.actions", fallback: "Actions")),
+            toolbarLabeledButton(detailsButton, label: L10n.string("toolbar.info", fallback: "Info")),
             searchField,
             iconSizeSlider
         ])
@@ -1701,7 +1710,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private func setDetailsPaneVisible(_ visible: Bool) {
         detailsPaneVisible = visible
         detailsPane.isHidden = !visible
-        detailsPaneWidthConstraint?.constant = visible ? 260 : 0
+        detailsPaneWidthConstraint?.constant = visible ? 320 : 0
         if visible {
             detailsPane.update(selection: currentSelection)
         }
