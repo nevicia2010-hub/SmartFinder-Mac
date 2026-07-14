@@ -1,6 +1,6 @@
 import Foundation
 
-public enum FileInfoPanelFieldLabelAlignment: Equatable {
+public enum FileInfoPanelFieldLabelAlignment: Equatable, Sendable {
     case leading
     case trailing
 }

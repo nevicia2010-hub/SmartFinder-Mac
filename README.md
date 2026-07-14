@@ -45,7 +45,7 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 - Back and forward arrows remain visible in gray when unavailable, then brighten when that direction becomes available.
 - Finder-like toolbar menus provide display presets, grouping/sorting, system sharing, real Finder color tags, and common file actions.
 - Windows Explorer-style convenience toggles are available for hidden items, file name extensions, and item selection checkboxes.
-- A lightweight right-side info pane can show selected item metadata and photo EXIF/GPS basics without generating document thumbnails.
+- A lightweight right-side info pane can show selected item metadata and photo EXIF/GPS basics without generating document thumbnails; ImageIO metadata is read on a utility task so large RAW selections do not block the window.
 - Photo info includes capture date, camera model, lens, pixel dimensions, resolution, ISO, focal length, aperture, shutter speed, exposure compensation, white balance, color space, and GPS when available.
 - GPS-tagged photos can be opened in Apple Maps from the info pane.
 - Photo companion protection keeps same-stem RAW, rendered image, and sidecar files together for copy, move, drag/drop, paste, move to Trash, and rename operations.
@@ -66,10 +66,11 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 - Column view follows the current path through parent folders and opens child columns with system icons only, avoiding document thumbnail generation.
 - Column view adapts each column width to the visible file names, with a clamp to keep very long names from consuming the whole window.
 - A path breadcrumb bar lets you jump directly to parent folders.
-- Common window operations are available: refresh, new folder, rename, move to Trash, copy/paste, copy path, compress, reveal in Finder, Get Info, context menu, editable path field, and icon-size control.
+- Common window operations are available: refresh, new folder, Finder-style rename, move to Trash, copy/paste, copy path, compress, reveal in Finder, Get Info, context menu, editable path field, and icon-size control.
+- Rename supports clicking an already selected item name to edit in place; regular files select only the base name by default so the extension is preserved unless you intentionally edit it.
 - Folder size is available on demand for a selected folder and can be cancelled while running.
 - A dual-pane mode can be opened from the Display menu for drag-and-drop file moves without loading the second pane at startup.
-- Drag and drop supports Finder-style file moves by default and copies when holding Option.
+- Drag and drop moves files on the same volume, copies across volumes, and copies when holding Option. Copy-only drag sources are never silently converted into moves.
 - Sidebar locations accept dragged files for quick move/copy into common folders or mounted volumes.
 - Context menus include New Folder, New Text File, New Markdown File, New CSV File, Copy Name, Copy Path, Copy Parent Path, and Copy as Shell Path.
 - The status bar shows selected file byte size and available disk space without recursively scanning folders.
@@ -119,13 +120,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.8.31.dmg`
+- `dist/SmartFinder-0.8.33.dmg`
 
 The app is ad-hoc signed for local use. See Security Notice above for the first-launch Gatekeeper warning on other Macs.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.8.31.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.8.33.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 
@@ -137,15 +138,19 @@ Photo metadata is read through macOS ImageIO. SmartFinder focuses on mainstream 
 
 Photo companion protection is file-name based. When SmartFinder operates on a known photo file such as `IMG_0001.CR3`, it checks the same folder for known same-stem companions such as `IMG_0001.JPG`, `IMG_0001.HEIC`, `IMG_0001.XMP`, `IMG_0001.AAE`, `IMG_0001.ACR`, `IMG_0001.DOP`, `IMG_0001.PP3`, `IMG_0001.ON1`, or `IMG_0001.COS`. Matching companions are included in copy, move, drag/drop, paste, move to Trash, and rename operations. This does not decode images, inspect whole folders in the background, or create a photo catalog.
 
+Batch copy, move, and companion-file rename operations use a transaction-style plan. A companion group receives one shared collision suffix, and completed steps are rolled back if a later step fails. File and folder names are validated as single path components before creation or rename.
+
 ## Preview Strategy
 
 SmartFinder is intentionally selective about content thumbnails:
 
 - Photos, RAW files, and supported videos can use real Quick Look thumbnails.
+- The in-memory thumbnail cache is size- and Retina-scale-aware, capped at 128 MB by default, and cancels obsolete requests when the folder, view, or icon size changes.
 - PDF, Office, audio, archive, code, and unknown files stay lightweight and readable with macOS system icons plus type/size subtitles.
 - This keeps large mixed folders easier to scan without asking macOS to render every document page.
 - List view uses metadata and system icons only; it does not run the thumbnail pipeline.
 - Column view uses metadata and system icons only; it does not run the thumbnail pipeline.
+- Hidden column-view tables are released when switching to icon or list view and rebuilt on demand, so large directory columns do not stay resident in memory.
 - The info pane uses file metadata, system icons, and selected-file photo metadata only when the pane is visible, so it does not start a heavy preview database.
 - Photo companion protection checks sibling file names only during explicit file operations; it does not create a background index.
 - Toolbar menus are created on demand and operate on the current folder or current selection; SmartFinder does not run a full-disk indexer or pre-render document thumbnails.

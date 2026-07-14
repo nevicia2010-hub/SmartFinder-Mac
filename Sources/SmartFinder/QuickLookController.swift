@@ -1,7 +1,10 @@
 import Foundation
 import Quartz
 
-final class QuickLookController: NSObject, QLPreviewPanelDataSource, QLPreviewPanelDelegate {
+@MainActor
+final class QuickLookController: NSObject,
+    @preconcurrency QLPreviewPanelDataSource,
+    QLPreviewPanelDelegate {
     private var urls: [URL] = []
 
     func preview(urls: [URL]) {

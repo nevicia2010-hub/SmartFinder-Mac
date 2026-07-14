@@ -45,6 +45,171 @@ expect(
     "rename should move the item to the requested name"
 )
 
+expect(
+    FileRenameInputPolicy.editableNameRange(forName: "草帽山极光.mp4", isDirectory: false) == NSRange(location: 0, length: 5),
+    "file rename editing should select the base name and preserve the extension by default"
+)
+expect(
+    FileRenameInputPolicy.editableNameRange(forName: "archive.tar.gz", isDirectory: false) == NSRange(location: 0, length: 11),
+    "file rename editing should preserve only the last extension by default"
+)
+expect(
+    FileRenameInputPolicy.editableNameRange(forName: "README", isDirectory: false) == NSRange(location: 0, length: 6),
+    "extensionless file rename editing should select the full name"
+)
+expect(
+    FileRenameInputPolicy.editableNameRange(forName: ".gitignore", isDirectory: false) == NSRange(location: 0, length: 10),
+    "hidden extensionless file rename editing should select the full name"
+)
+expect(
+    FileRenameInputPolicy.editableNameRange(forName: "Project.photoslibrary", isDirectory: true) == NSRange(location: 0, length: 21),
+    "folder rename editing should select the full displayed folder name"
+)
+
+expect(FileNameValidationPolicy.isValid("夏季照片 01"), "normal Unicode file names should remain valid")
+expect(!FileNameValidationPolicy.isValid("../escaped"), "file names must not escape through a parent path component")
+expect(!FileNameValidationPolicy.isValid("nested/name"), "file names must not contain a path separator")
+expect(!FileNameValidationPolicy.isValid("."), "the current-directory path component must not be accepted as a file name")
+expect(!FileNameValidationPolicy.isValid(".."), "the parent-directory path component must not be accepted as a file name")
+expect(!FileNameValidationPolicy.isValid("legacy:name"), "Finder-incompatible colon names must be rejected")
+
+let invalidRenameDirectory = try fileOperations.createFolder(named: "Invalid Rename", in: operationsDirectory)
+let invalidRenameSource = try fileOperations.createFile(named: "inside.txt", contents: "inside", in: invalidRenameDirectory)
+var invalidRenameWasRejected = false
+do {
+    _ = try fileOperations.rename(invalidRenameSource, to: "../escaped.txt")
+} catch {
+    invalidRenameWasRejected = true
+}
+expect(invalidRenameWasRejected, "rename must reject a name that resolves outside the current folder")
+expect(FileManager.default.fileExists(atPath: invalidRenameSource.path), "a rejected rename must leave the source file in place")
+expect(
+    !FileManager.default.fileExists(atPath: operationsDirectory.appendingPathComponent("escaped.txt").path),
+    "a rejected rename must not create an escaped destination"
+)
+
+expect(
+    FileDragOperationPolicy.operation(
+        sourceAllowsCopy: true,
+        sourceAllowsMove: false,
+        optionKeyDown: false,
+        sourceAndDestinationAreOnSameVolume: true
+    ) == .copy,
+    "a copy-only drag source must never be converted into a move"
+)
+expect(
+    FileDragOperationPolicy.operation(
+        sourceAllowsCopy: true,
+        sourceAllowsMove: true,
+        optionKeyDown: false,
+        sourceAndDestinationAreOnSameVolume: true
+    ) == .move,
+    "same-volume file drags should move when the source allows moving"
+)
+expect(
+    FileDragOperationPolicy.operation(
+        sourceAllowsCopy: true,
+        sourceAllowsMove: true,
+        optionKeyDown: false,
+        sourceAndDestinationAreOnSameVolume: false
+    ) == .copy,
+    "cross-volume file drags should copy by default"
+)
+expect(
+    FileDragOperationPolicy.operation(
+        sourceAllowsCopy: false,
+        sourceAllowsMove: true,
+        optionKeyDown: false,
+        sourceAndDestinationAreOnSameVolume: false
+    ) == nil,
+    "cross-volume move-only drags should be rejected"
+)
+expect(
+    FileDragOperationPolicy.operation(
+        sourceAllowsCopy: true,
+        sourceAllowsMove: true,
+        optionKeyDown: true,
+        sourceAndDestinationAreOnSameVolume: true
+    ) == .copy,
+    "holding Option should request a copy"
+)
+
+let clipboardSourceURLs = [URL(fileURLWithPath: "/tmp/clipboard-a.txt")]
+let clipboardMoveMarker = FileClipboardPolicy.moveMarker(token: "trusted-token")
+let clipboardMoveClaim = FileClipboardMoveClaim(
+    marker: clipboardMoveMarker,
+    pasteboardChangeCount: 42,
+    sourceURLs: clipboardSourceURLs
+)
+expect(
+    FileClipboardPolicy.operation(
+        marker: clipboardMoveMarker,
+        pasteboardChangeCount: 42,
+        sourceURLs: clipboardSourceURLs,
+        trustedMoveClaim: clipboardMoveClaim
+    ) == .move,
+    "an unchanged SmartFinder cut claim should paste as a move"
+)
+expect(
+    FileClipboardPolicy.operation(
+        marker: clipboardMoveMarker,
+        pasteboardChangeCount: 43,
+        sourceURLs: clipboardSourceURLs,
+        trustedMoveClaim: clipboardMoveClaim
+    ) == .copy,
+    "a clipboard rewritten by another process must fall back to copy"
+)
+expect(
+    FileClipboardPolicy.operation(
+        marker: "move",
+        pasteboardChangeCount: 42,
+        sourceURLs: clipboardSourceURLs,
+        trustedMoveClaim: clipboardMoveClaim
+    ) == .copy,
+    "an arbitrary public clipboard marker must not trigger a move"
+)
+
+let currentRequestID = UUID()
+let staleRequestID = UUID()
+let requestURL = URL(fileURLWithPath: "/tmp/request", isDirectory: true)
+expect(
+    LatestRequestPolicy.shouldApply(
+        requestID: currentRequestID,
+        currentRequestID: currentRequestID,
+        requestedURL: requestURL,
+        currentURL: requestURL
+    ),
+    "the latest request for the current URL should be applied"
+)
+expect(
+    !LatestRequestPolicy.shouldApply(
+        requestID: staleRequestID,
+        currentRequestID: currentRequestID,
+        requestedURL: requestURL,
+        currentURL: requestURL
+    ),
+    "an older request must not overwrite a newer load of the same URL"
+)
+
+expect(
+    ThumbnailCachePolicy.estimatedPixelCost(width: 180, height: 180, scale: 2) == 518_400,
+    "Retina thumbnail cache cost must include the backing scale squared"
+)
+expect(
+    ThumbnailCachePolicy.cacheKey(
+        for: URL(fileURLWithPath: "/tmp/photo.jpg"),
+        width: 96,
+        height: 96,
+        scale: 2
+    ) != ThumbnailCachePolicy.cacheKey(
+        for: URL(fileURLWithPath: "/tmp/photo.jpg"),
+        width: 180,
+        height: 180,
+        scale: 2
+    ),
+    "thumbnail cache keys must distinguish requested pixel sizes"
+)
+
 let sourceFile = operationsDirectory.appendingPathComponent("photo.jpg")
 try "image-data".write(to: sourceFile, atomically: true, encoding: .utf8)
 let firstCopy = try fileOperations.copy(sourceFile, toDirectory: operationsDirectory)
@@ -140,6 +305,59 @@ expect(
         FileManager.default.fileExists(atPath: photoGroupTargetDirectory.appendingPathComponent($0).path)
     },
     "group rename should preserve companion extensions"
+)
+
+let collisionSourceDirectory = operationsDirectory.appendingPathComponent("photo-collision-source", isDirectory: true)
+let collisionTargetDirectory = operationsDirectory.appendingPathComponent("photo-collision-target", isDirectory: true)
+try FileManager.default.createDirectory(at: collisionSourceDirectory, withIntermediateDirectories: true)
+try FileManager.default.createDirectory(at: collisionTargetDirectory, withIntermediateDirectories: true)
+for fileName in ["IMG_2001.CR3", "IMG_2001.JPG", "IMG_2001.XMP"] {
+    try fileName.write(
+        to: collisionSourceDirectory.appendingPathComponent(fileName),
+        atomically: true,
+        encoding: .utf8
+    )
+}
+try "existing".write(
+    to: collisionTargetDirectory.appendingPathComponent("IMG_2001.JPG"),
+    atomically: true,
+    encoding: .utf8
+)
+let collisionMoveResult = try fileOperations.transferPhotoCompanionGroup(
+    [collisionSourceDirectory.appendingPathComponent("IMG_2001.CR3")],
+    toDirectory: collisionTargetDirectory,
+    operation: .move
+)
+expect(
+    collisionMoveResult.map(\.lastPathComponent).sorted() == ["IMG_2001 copy.CR3", "IMG_2001 copy.JPG", "IMG_2001 copy.XMP"],
+    "a photo group collision should apply one shared suffix to every companion"
+)
+
+let rollbackSourceDirectory = operationsDirectory.appendingPathComponent("rollback-source", isDirectory: true)
+let rollbackTargetDirectory = operationsDirectory.appendingPathComponent("rollback-target", isDirectory: true)
+try FileManager.default.createDirectory(at: rollbackSourceDirectory, withIntermediateDirectories: true)
+try FileManager.default.createDirectory(at: rollbackTargetDirectory, withIntermediateDirectories: true)
+let rollbackExistingSource = rollbackSourceDirectory.appendingPathComponent("first.txt")
+let rollbackMissingSource = rollbackSourceDirectory.appendingPathComponent("missing.txt")
+try "first".write(to: rollbackExistingSource, atomically: true, encoding: .utf8)
+var transactionFailedAsExpected = false
+do {
+    _ = try fileOperations.transferPhotoCompanionGroup(
+        [rollbackExistingSource, rollbackMissingSource],
+        toDirectory: rollbackTargetDirectory,
+        operation: .move
+    )
+} catch {
+    transactionFailedAsExpected = true
+}
+expect(transactionFailedAsExpected, "a missing member should fail the complete transfer transaction")
+expect(
+    FileManager.default.fileExists(atPath: rollbackExistingSource.path),
+    "a failed multi-item move must roll an already moved file back to its source"
+)
+expect(
+    !FileManager.default.fileExists(atPath: rollbackTargetDirectory.appendingPathComponent("first.txt").path),
+    "a failed multi-item move must not leave a partial destination behind"
 )
 
 let duplicateDragURLs = FileTransferPlan.uniqueSourceURLs([
@@ -936,10 +1154,19 @@ expect(
     "Command-X should map to cutting selected files for Windows-style move paste"
 )
 expect(
-    FileClipboardPolicy.operation(forMarker: FileClipboardPolicy.moveMarker) == .move &&
-    FileClipboardPolicy.operation(forMarker: FileClipboardPolicy.copyMarker) == .copy &&
-    FileClipboardPolicy.operation(forMarker: nil) == .copy,
-    "file clipboard policy should map SmartFinder cut markers to move operations and default to copy"
+    FileClipboardPolicy.operation(
+        marker: FileClipboardPolicy.copyMarker,
+        pasteboardChangeCount: 0,
+        sourceURLs: [],
+        trustedMoveClaim: nil
+    ) == .copy &&
+    FileClipboardPolicy.operation(
+        marker: nil,
+        pasteboardChangeCount: 0,
+        sourceURLs: [],
+        trustedMoveClaim: nil
+    ) == .copy,
+    "file clipboard policy should default untrusted and copy markers to copy operations"
 )
 let menuSpecs = SmartFinderMenuBarSpecification.menus
 expect(

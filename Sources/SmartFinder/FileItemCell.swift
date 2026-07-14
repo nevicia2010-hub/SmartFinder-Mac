@@ -137,6 +137,15 @@ final class FileItemCell: NSCollectionViewItem {
         updateTagIndicator(finderLabelNumber: currentFinderLabelNumber)
     }
 
+    func containsTitle(atWindowPoint point: NSPoint) -> Bool {
+        let localPoint = titleField.convert(point, from: nil)
+        return titleField.bounds.insetBy(dx: -4, dy: -4).contains(localPoint)
+    }
+
+    func titleEditingFrame(in targetView: NSView) -> NSRect {
+        titleField.convert(titleField.bounds.insetBy(dx: -4, dy: -2), to: targetView)
+    }
+
     @objc private func toggleSelectionCheckbox() {
         guard let url = representedObject as? URL else {
             return

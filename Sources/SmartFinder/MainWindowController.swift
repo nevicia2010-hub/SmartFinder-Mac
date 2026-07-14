@@ -81,8 +81,61 @@ private final class AppearanceRefreshView: NSView {
     }
 }
 
+private final class MainWindowObservationBag: @unchecked Sendable {
+    private let lock = NSLock()
+    private let workspaceCenter = NSWorkspace.shared.notificationCenter
+    private let appearanceCenter = DistributedNotificationCenter.default()
+    private var mountedVolumeObservers: [NSObjectProtocol] = []
+    private var appearanceObservers: [NSObjectProtocol] = []
+    private var pendingRefreshes: [DispatchWorkItem] = []
+
+    func replaceMountedVolumeObservers(_ observers: [NSObjectProtocol]) {
+        lock.lock()
+        let previous = mountedVolumeObservers
+        mountedVolumeObservers = observers
+        lock.unlock()
+        previous.forEach(workspaceCenter.removeObserver)
+    }
+
+    func replaceAppearanceObservers(_ observers: [NSObjectProtocol]) {
+        lock.lock()
+        let previous = appearanceObservers
+        appearanceObservers = observers
+        lock.unlock()
+        previous.forEach(appearanceCenter.removeObserver)
+    }
+
+    func replacePendingRefreshes(_ workItems: [DispatchWorkItem]) {
+        lock.lock()
+        let previous = pendingRefreshes
+        pendingRefreshes = workItems
+        lock.unlock()
+        previous.forEach { $0.cancel() }
+    }
+
+    func cancelPendingRefreshes() {
+        replacePendingRefreshes([])
+    }
+
+    func cancelAll() {
+        lock.lock()
+        let mounted = mountedVolumeObservers
+        let appearance = appearanceObservers
+        let workItems = pendingRefreshes
+        mountedVolumeObservers.removeAll()
+        appearanceObservers.removeAll()
+        pendingRefreshes.removeAll()
+        lock.unlock()
+
+        mounted.forEach(workspaceCenter.removeObserver)
+        appearance.forEach(appearanceCenter.removeObserver)
+        workItems.forEach { $0.cancel() }
+    }
+}
+
 private final class SidebarDropButton: NSButton {
     var onFileDrop: (([URL], FileTransferOperation) -> Bool)?
+    var dropTargetURL: URL?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -95,26 +148,33 @@ private final class SidebarDropButton: NSButton {
     }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        guard !fileURLs(from: sender.draggingPasteboard).isEmpty else {
+        let urls = fileURLs(from: sender.draggingPasteboard)
+        guard let dropTargetURL,
+              let operation = FileDragOperationResolver.operation(
+                for: sender,
+                sourceURLs: urls,
+                targetDirectoryURL: dropTargetURL
+              ) else {
             return []
         }
-        return transferOperation(for: sender) == .copy ? .copy : .move
+        return FileDragOperationResolver.dragOperation(operation)
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        draggingEntered(sender)
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         let urls = fileURLs(from: sender.draggingPasteboard)
-        guard !urls.isEmpty else {
+        guard let dropTargetURL,
+              let operation = FileDragOperationResolver.operation(
+                for: sender,
+                sourceURLs: urls,
+                targetDirectoryURL: dropTargetURL
+              ) else {
             return false
         }
-        return onFileDrop?(urls, transferOperation(for: sender)) ?? false
-    }
-
-    private func transferOperation(for info: NSDraggingInfo) -> FileTransferOperation {
-        if info.draggingSourceOperationMask.contains(.copy),
-           NSEvent.modifierFlags.contains(.option) {
-            return .copy
-        }
-        return .move
+        return onFileDrop?(urls, operation) ?? false
     }
 
     private func fileURLs(from pasteboard: NSPasteboard) -> [URL] {
@@ -147,8 +207,8 @@ private final class SmartFinderWindow: NSWindow {
 }
 
 final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSWindowDelegate, NSMenuItemValidation {
-    private let gridController = FileGridViewController()
-    private let secondaryGridController = FileGridViewController()
+    private let gridController: FileGridViewController
+    private let secondaryGridController: FileGridViewController
     private let mountedVolumeProvider = MountedVolumeProvider()
     private let pathField = NSTextField(string: "")
     private let secondaryPathField = NSTextField(labelWithString: "")
@@ -203,9 +263,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private var secondaryPaneLoaded = false
     private var secondaryFolderURL: URL?
     private var currentSelection: [FileItem] = []
-    private var mountedVolumeNotificationObservers: [NSObjectProtocol] = []
-    private var pendingMountedVolumeSidebarRefreshes: [DispatchWorkItem] = []
-    private var appearanceNotificationObservers: [NSObjectProtocol] = []
+    private let observationBag = MainWindowObservationBag()
     private var appearanceRefreshScheduled = false
 
     private struct SidebarLocation {
@@ -216,6 +274,16 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     }
 
     init(startURL: URL) {
+        let clipboardSession = FileClipboardSession()
+        let operationExecutor = FileOperationExecutor()
+        gridController = FileGridViewController(
+            fileClipboardSession: clipboardSession,
+            fileOperationExecutor: operationExecutor
+        )
+        secondaryGridController = FileGridViewController(
+            fileClipboardSession: clipboardSession,
+            fileOperationExecutor: operationExecutor
+        )
         let window = SmartFinderWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 760),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -244,15 +312,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     }
 
     deinit {
-        let notificationCenter = NSWorkspace.shared.notificationCenter
-        for observer in mountedVolumeNotificationObservers {
-            notificationCenter.removeObserver(observer)
-        }
-        cancelPendingMountedVolumeSidebarRefreshes()
-        let distributedNotificationCenter = DistributedNotificationCenter.default()
-        for observer in appearanceNotificationObservers {
-            distributedNotificationCenter.removeObserver(observer)
-        }
+        observationBag.cancelAll()
     }
 
     private func setupContent() {
@@ -1106,7 +1166,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
 
     private func startObservingMountedVolumeChanges() {
         let notificationCenter = NSWorkspace.shared.notificationCenter
-        mountedVolumeNotificationObservers = MountedVolumeSidebarRefreshPolicy
+        let observers = MountedVolumeSidebarRefreshPolicy
             .defaultRefreshNotificationNames
             .sorted()
             .map { notificationName in
@@ -1115,19 +1175,29 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
                     object: nil,
                     queue: .main
                 ) { [weak self] notification in
-                    self?.handleMountedVolumeNotification(notification)
+                    let notificationName = notification.name.rawValue
+                    let volumeURL = notification.userInfo?[NSWorkspace.volumeURLUserInfoKey] as? URL
+                    Task { @MainActor [weak self] in
+                        self?.handleMountedVolumeNotification(
+                            named: notificationName,
+                            volumeURL: volumeURL
+                        )
+                    }
                 }
             }
+        observationBag.replaceMountedVolumeObservers(observers)
     }
 
-    private func handleMountedVolumeNotification(_ notification: Notification) {
-        let refreshPasses = mountedVolumeRefreshPolicy.sidebarRefreshPasses(forNotificationNamed: notification.name.rawValue)
+    private func handleMountedVolumeNotification(named notificationName: String, volumeURL: URL?) {
+        let refreshPasses = mountedVolumeRefreshPolicy.sidebarRefreshPasses(
+            forNotificationNamed: notificationName
+        )
         guard !refreshPasses.isEmpty else {
             return
         }
 
-        if isVolumeRemovalNotification(notification.name.rawValue),
-           let volumeURL = notification.userInfo?[NSWorkspace.volumeURLUserInfoKey] as? URL,
+        if isVolumeRemovalNotification(notificationName),
+           let volumeURL,
            currentPathIsInside(volumeURL) {
             navigate(to: FileManager.default.homeDirectoryForCurrentUser, recordHistory: true)
         }
@@ -1143,7 +1213,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private func scheduleMountedVolumeSidebarRefreshes(_ passes: [MountedVolumeSidebarRefreshPass]) {
         cancelPendingMountedVolumeSidebarRefreshes()
 
-        pendingMountedVolumeSidebarRefreshes = passes.map { pass in
+        let workItems = passes.map { pass in
             let workItem = DispatchWorkItem { [weak self] in
                 self?.reloadSidebar()
             }
@@ -1156,30 +1226,32 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
 
             return workItem
         }
+        observationBag.replacePendingRefreshes(workItems)
     }
 
     private func cancelPendingMountedVolumeSidebarRefreshes() {
-        for workItem in pendingMountedVolumeSidebarRefreshes {
-            workItem.cancel()
-        }
-        pendingMountedVolumeSidebarRefreshes.removeAll()
+        observationBag.cancelPendingRefreshes()
     }
 
     private func startObservingAppearanceChanges() {
         let notificationCenter = DistributedNotificationCenter.default()
-        appearanceNotificationObservers = [
+        let observers = [
             notificationCenter.addObserver(
                 forName: Notification.Name(AppearanceRefreshPolicy.interfaceThemeChangedNotificationName),
                 object: nil,
                 queue: .main
             ) { [weak self] notification in
-                self?.handleAppearanceNotification(notification)
+                let notificationName = notification.name.rawValue
+                Task { @MainActor [weak self] in
+                    self?.handleAppearanceNotification(named: notificationName)
+                }
             }
         ]
+        observationBag.replaceAppearanceObservers(observers)
     }
 
-    private func handleAppearanceNotification(_ notification: Notification) {
-        guard appearanceRefreshPolicy.shouldRefreshAppearance(forNotificationNamed: notification.name.rawValue) else {
+    private func handleAppearanceNotification(named notificationName: String) {
+        guard appearanceRefreshPolicy.shouldRefreshAppearance(forNotificationNamed: notificationName) else {
             return
         }
         scheduleAppearanceRefresh()
@@ -1268,6 +1340,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         sidebarURLs.append(location.url)
 
         let button = SidebarDropButton(title: location.name, target: self, action: #selector(openSidebarLocation(_:)))
+        button.dropTargetURL = location.url
         button.image = location.icon
         button.imagePosition = .imageLeading
         button.imageScaling = .scaleProportionallyDown
@@ -1993,8 +2066,7 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         guard sidebarURLs.indices.contains(index) else {
             return false
         }
-        gridController.transfer(urls, toDirectory: sidebarURLs[index], operation: operation)
-        return true
+        return gridController.transfer(urls, toDirectory: sidebarURLs[index], operation: operation)
     }
 
     @objc private func openBreadcrumb(_ sender: NSButton) {
@@ -2012,18 +2084,24 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
         let volumeURL = sidebarURLs[sender.tag]
         let volumeName = volumeURL.lastPathComponent
         statusField.stringValue = localizedEjectFeedback(.started, volumeName: volumeName)
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = Result { try NSWorkspace.shared.unmountAndEjectDevice(at: volumeURL) }
-            DispatchQueue.main.async {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let errorMessage: String?
+            do {
+                try NSWorkspace.shared.unmountAndEjectDevice(at: volumeURL)
+                errorMessage = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            Task { @MainActor [weak self] in
                 guard let self else {
                     return
                 }
-                if case .failure(let error) = result {
+                if let errorMessage {
                     self.statusField.stringValue = self.localizedEjectFeedback(
-                        .failed(errorDescription: error.localizedDescription),
+                        .failed(errorDescription: errorMessage),
                         volumeName: volumeName
                     )
-                    self.showOperationError(error)
+                    self.showOperationError(FileOperationExecutionError(message: errorMessage))
                     return
                 }
                 if self.currentPathIsInside(volumeURL) {

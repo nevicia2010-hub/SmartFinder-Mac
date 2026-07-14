@@ -1,6 +1,6 @@
 import Foundation
 
-public struct MountedVolumeSidebarRefreshPass: Equatable {
+public struct MountedVolumeSidebarRefreshPass: Equatable, Sendable {
     public let delay: TimeInterval
 
     public init(delay: TimeInterval) {

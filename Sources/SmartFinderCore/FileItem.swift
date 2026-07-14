@@ -1,6 +1,6 @@
 import Foundation
 
-public struct FileItem: Hashable {
+public struct FileItem: Hashable, Sendable {
     public let url: URL
     public let name: String
     public let isDirectory: Bool

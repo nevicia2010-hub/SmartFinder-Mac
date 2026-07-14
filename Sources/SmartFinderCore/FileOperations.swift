@@ -4,6 +4,7 @@ public enum FileOperationError: Error, LocalizedError {
     case emptyCompressionSelection
     case compressionFailed(String)
     case destinationExists(String)
+    case transactionFailed(String)
 
     public var errorDescription: String? {
         switch self {
@@ -13,6 +14,8 @@ public enum FileOperationError: Error, LocalizedError {
             return message.isEmpty ? "Compression failed." : message
         case .destinationExists(let path):
             return "A destination file already exists: \(path)"
+        case .transactionFailed(let message):
+            return message
         }
     }
 }
@@ -31,14 +34,14 @@ public final class FileOperations {
 
     @discardableResult
     public func createFolder(named name: String, in directoryURL: URL) throws -> URL {
-        let destinationURL = directoryURL.appendingPathComponent(name, isDirectory: true)
+        let destinationURL = try destinationURL(named: name, in: directoryURL, isDirectory: true)
         try fileManager.createDirectory(at: destinationURL, withIntermediateDirectories: false)
         return destinationURL
     }
 
     @discardableResult
     public func createFile(named name: String, contents: String = "", in directoryURL: URL) throws -> URL {
-        let destinationURL = directoryURL.appendingPathComponent(name, isDirectory: false)
+        let destinationURL = try destinationURL(named: name, in: directoryURL, isDirectory: false)
         try contents.write(to: destinationURL, atomically: true, encoding: .utf8)
         return destinationURL
     }
@@ -53,7 +56,11 @@ public final class FileOperations {
 
     @discardableResult
     public func rename(_ url: URL, to newName: String) throws -> URL {
-        let destinationURL = url.deletingLastPathComponent().appendingPathComponent(newName)
+        let destinationURL = try destinationURL(
+            named: newName,
+            in: url.deletingLastPathComponent(),
+            isDirectory: false
+        )
         try fileManager.moveItem(at: url, to: destinationURL)
         return destinationURL
     }
@@ -88,21 +95,20 @@ public final class FileOperations {
         toDirectory directoryURL: URL,
         operation: FileTransferOperation
     ) throws -> [URL] {
-        let expandedURLs = PhotoCompanionFilePolicy.expandedSourceURLs(for: sourceURLs)
-        var transferredURLs: [URL] = []
-
-        for sourceURL in expandedURLs {
-            transferredURLs.append(try transfer(sourceURL, toDirectory: directoryURL, operation: operation))
-        }
-
-        return transferredURLs
+        let groups = PhotoCompanionFilePolicy.expandedSourceGroups(for: sourceURLs)
+        let plan = plannedTransferMutations(
+            for: groups,
+            toDirectory: directoryURL,
+            operation: operation
+        )
+        return try execute(plan, operation: operation)
     }
 
     @discardableResult
     public func renamePhotoCompanionGroup(_ url: URL, to newName: String) throws -> [URL] {
         let sourceURLs = PhotoCompanionFilePolicy.expandedSourceURLs(for: [url])
         let parentURL = url.deletingLastPathComponent()
-        let primaryDestinationURL = parentURL.appendingPathComponent(newName)
+        let primaryDestinationURL = try destinationURL(named: newName, in: parentURL, isDirectory: false)
         let newBaseName = primaryDestinationURL.deletingPathExtension().lastPathComponent
 
         let renamePairs: [(source: URL, destination: URL)] = sourceURLs.map { sourceURL in
@@ -129,17 +135,8 @@ public final class FileOperations {
             }
         }
 
-        var renamedURLs: [URL] = []
-        for pair in renamePairs {
-            if pair.source.standardizedFileURL == pair.destination.standardizedFileURL {
-                renamedURLs.append(pair.destination)
-                continue
-            }
-            try fileManager.moveItem(at: pair.source, to: pair.destination)
-            renamedURLs.append(pair.destination)
-        }
-
-        return renamedURLs
+        let plan = renamePairs.map { PlannedMutation(source: $0.source, destination: $0.destination) }
+        return try execute(plan, operation: .move)
     }
 
     @discardableResult
@@ -242,5 +239,130 @@ public final class FileOperations {
             return "\(baseName)\(suffix)"
         }
         return "\(baseName)\(suffix).\(extensionPart)"
+    }
+
+    private struct PlannedMutation {
+        let source: URL
+        let destination: URL
+    }
+
+    private func destinationURL(named name: String, in directoryURL: URL, isDirectory: Bool) throws -> URL {
+        let validatedName = try FileNameValidationPolicy.validatedName(name)
+        let standardizedDirectory = directoryURL.standardizedFileURL
+        let destinationURL = standardizedDirectory.appendingPathComponent(
+            validatedName,
+            isDirectory: isDirectory
+        )
+        guard destinationURL.deletingLastPathComponent().standardizedFileURL == standardizedDirectory else {
+            throw FileNameValidationError.pathSeparator
+        }
+        return destinationURL
+    }
+
+    private func plannedTransferMutations(
+        for groups: [[URL]],
+        toDirectory directoryURL: URL,
+        operation: FileTransferOperation
+    ) -> [PlannedMutation] {
+        let targetDirectory = directoryURL.standardizedFileURL
+        var reservedDestinationPaths = Set<String>()
+        var mutations: [PlannedMutation] = []
+
+        for group in groups {
+            if operation == .move,
+               group.allSatisfy({ $0.deletingLastPathComponent().standardizedFileURL == targetDirectory }) {
+                continue
+            }
+
+            var suffixAttempt = operation == .copy ? 1 : 0
+            while true {
+                let candidates = group.map { sourceURL in
+                    PlannedMutation(
+                        source: sourceURL,
+                        destination: transferDestination(
+                            for: sourceURL,
+                            in: targetDirectory,
+                            suffixAttempt: suffixAttempt
+                        )
+                    )
+                }
+                let canUseCandidates = candidates.allSatisfy { mutation in
+                    let destinationPath = mutation.destination.standardizedFileURL.path
+                    return !reservedDestinationPaths.contains(destinationPath) &&
+                        !fileManager.fileExists(atPath: destinationPath)
+                }
+
+                if canUseCandidates {
+                    mutations.append(contentsOf: candidates)
+                    reservedDestinationPaths.formUnion(
+                        candidates.map { $0.destination.standardizedFileURL.path }
+                    )
+                    break
+                }
+
+                suffixAttempt = suffixAttempt == 0 ? 1 : suffixAttempt + 1
+            }
+        }
+
+        return mutations
+    }
+
+    private func transferDestination(for sourceURL: URL, in directoryURL: URL, suffixAttempt: Int) -> URL {
+        guard suffixAttempt > 0 else {
+            return directoryURL.appendingPathComponent(sourceURL.lastPathComponent)
+        }
+        let extensionPart = sourceURL.pathExtension
+        let baseName = sourceURL.deletingPathExtension().lastPathComponent
+        let index = suffixAttempt == 1 ? nil : suffixAttempt
+        return directoryURL.appendingPathComponent(
+            copyName(baseName: baseName, extensionPart: extensionPart, index: index)
+        )
+    }
+
+    private func execute(
+        _ mutations: [PlannedMutation],
+        operation: FileTransferOperation
+    ) throws -> [URL] {
+        var completed: [PlannedMutation] = []
+
+        do {
+            for mutation in mutations {
+                switch operation {
+                case .copy:
+                    try fileManager.copyItem(at: mutation.source, to: mutation.destination)
+                case .move:
+                    try fileManager.moveItem(at: mutation.source, to: mutation.destination)
+                }
+                completed.append(mutation)
+            }
+            return mutations.map(\.destination)
+        } catch {
+            let rollbackErrors = rollback(completed, operation: operation)
+            var message = "The file operation failed and completed items were rolled back: \(error.localizedDescription)"
+            if !rollbackErrors.isEmpty {
+                message += " Rollback also failed: \(rollbackErrors.joined(separator: "; "))"
+            }
+            throw FileOperationError.transactionFailed(message)
+        }
+    }
+
+    private func rollback(
+        _ completed: [PlannedMutation],
+        operation: FileTransferOperation
+    ) -> [String] {
+        var errors: [String] = []
+        for mutation in completed.reversed() {
+            do {
+                switch operation {
+                case .copy:
+                    try fileManager.removeItem(at: mutation.destination)
+                case .move:
+                    try fileManager.moveItem(at: mutation.destination, to: mutation.source)
+                }
+            } catch {
+                errors.append(error.localizedDescription)
+            }
+        }
+        return errors
     }
 }

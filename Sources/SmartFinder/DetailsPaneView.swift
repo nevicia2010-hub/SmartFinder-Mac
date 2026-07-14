@@ -15,6 +15,9 @@ final class DetailsPaneView: NSVisualEffectView {
     private let byteFormatter = ByteCountFormatter()
     private let dateFormatter = DateFormatter()
     private var mapsURL: URL?
+    private var metadataTask: Task<Void, Never>?
+    private var metadataRequestID = UUID()
+    private var selectedURL: URL?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -30,6 +33,11 @@ final class DetailsPaneView: NSVisualEffectView {
     }
 
     func update(selection: [FileItem]) {
+        metadataTask?.cancel()
+        metadataTask = nil
+        metadataRequestID = UUID()
+        selectedURL = selection.count == 1 ? selection.first?.url : nil
+
         guard let item = selection.first else {
             iconView.image = nil
             headerTitleField.stringValue = L10n.string("details.panel.title", fallback: "Info")
@@ -60,10 +68,36 @@ final class DetailsPaneView: NSVisualEffectView {
             : L10n.string("details.panel.title", fallback: "Info")
         titleField.stringValue = item.name
         subtitleField.stringValue = kindLabel(for: item)
-        let details = detailsText(for: item)
+        let details = detailsText(for: item, photoSummary: nil)
         bodyField.stringValue = details.text
         mapsURL = details.mapsURL
         openInMapsButton.isHidden = details.mapsURL == nil
+
+        guard item.category == .image else {
+            return
+        }
+
+        let requestID = metadataRequestID
+        let requestedURL = item.url
+        metadataTask = Task { [weak self] in
+            let summary = await Task.detached(priority: .utility) {
+                Self.loadPhotoMetadata(from: requestedURL)
+            }.value
+            guard let self,
+                  !Task.isCancelled,
+                  LatestRequestPolicy.shouldApply(
+                    requestID: requestID,
+                    currentRequestID: self.metadataRequestID,
+                    requestedURL: requestedURL,
+                    currentURL: self.selectedURL
+                  ) else {
+                return
+            }
+            let details = self.detailsText(for: item, photoSummary: summary)
+            self.bodyField.stringValue = details.text
+            self.mapsURL = details.mapsURL
+            self.openInMapsButton.isHidden = details.mapsURL == nil
+        }
     }
 
     func refreshAppearance() {
@@ -162,7 +196,10 @@ final class DetailsPaneView: NSVisualEffectView {
         update(selection: [])
     }
 
-    private func detailsText(for item: FileItem) -> (text: String, mapsURL: URL?) {
+    private func detailsText(
+        for item: FileItem,
+        photoSummary: PhotoMetadataSummary?
+    ) -> (text: String, mapsURL: URL?) {
         var lines: [String] = []
         lines.append(sectionTitle("details.section.file", fallback: "File"))
         lines.append("\(L10n.string("info.kind", fallback: "Kind")): \(kindLabel(for: item))")
@@ -176,7 +213,7 @@ final class DetailsPaneView: NSVisualEffectView {
             lines.append("\(L10n.string("info.modified", fallback: "Modified")): \(dateFormatter.string(from: modifiedAt))")
         }
 
-        let photoDetails = photoMetadataLines(for: item)
+        let photoDetails = photoMetadataLines(for: photoSummary)
         if !photoDetails.lines.isEmpty {
             lines.append("")
             lines.append(sectionTitle("details.section.photo", fallback: "Photography"))
@@ -189,14 +226,11 @@ final class DetailsPaneView: NSVisualEffectView {
         return (lines.joined(separator: "\n"), photoDetails.mapsURL)
     }
 
-    private func photoMetadataLines(for item: FileItem) -> (lines: [String], mapsURL: URL?) {
-        guard item.category == .image,
-              let source = CGImageSourceCreateWithURL(item.url as CFURL, nil),
-              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any] else {
+    private func photoMetadataLines(for summary: PhotoMetadataSummary?) -> (lines: [String], mapsURL: URL?) {
+        guard let summary else {
             return ([], nil)
         }
 
-        let summary = PhotoMetadataSummary(properties: properties)
         var lines: [String] = []
         if let captureDate = summary.captureDate {
             lines.append("\(L10n.string("photo.captureDate", fallback: "Capture Date")): \(captureDate)")
@@ -238,6 +272,21 @@ final class DetailsPaneView: NSVisualEffectView {
             lines.append("\(L10n.string("photo.gps", fallback: "GPS")): \(gpsCoordinate)")
         }
         return (lines, summary.mapsURL)
+    }
+
+    private nonisolated static func loadPhotoMetadata(from url: URL) -> PhotoMetadataSummary? {
+        autoreleasepool {
+            let options = [kCGImageSourceShouldCache: false] as CFDictionary
+            guard let source = CGImageSourceCreateWithURL(url as CFURL, options),
+                  let properties = CGImageSourceCopyPropertiesAtIndex(
+                    source,
+                    0,
+                    options
+                  ) as? [String: Any] else {
+                return nil
+            }
+            return PhotoMetadataSummary(properties: properties)
+        }
     }
 
     private func sectionTitle(_ key: String, fallback: String) -> String {

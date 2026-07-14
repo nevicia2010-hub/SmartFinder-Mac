@@ -1,6 +1,7 @@
 import AppKit
 import SmartFinderCore
 
+@MainActor
 final class MainMenuBuilder {
     static func install(target: MainWindowController) {
         let mainMenu = NSMenu()

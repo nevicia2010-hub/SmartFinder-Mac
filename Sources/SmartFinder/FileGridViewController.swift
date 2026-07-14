@@ -20,6 +20,7 @@ enum FileViewMode: Equatable {
     case column
 }
 
+@MainActor
 protocol SmartCollectionViewKeyDelegate: AnyObject {
     func smartCollectionViewDidPressShortcut(_ shortcut: FinderKeyboardShortcut)
     func smartCollectionViewDidPressSpace()
@@ -34,6 +35,8 @@ protocol SmartCollectionViewKeyDelegate: AnyObject {
     func smartCollectionViewDidPressMoveToTrash()
     func smartCollectionViewDidPressGetInfo()
     func smartCollectionViewDidRightClick(event: NSEvent)
+    func smartCollectionViewDidRequestInlineRename(indexPath: IndexPath, event: NSEvent)
+    func smartTableView(_ tableView: NSTableView, didRequestInlineRenameForRow row: Int, event: NSEvent)
 }
 
 final class SmartCollectionView: NSCollectionView {
@@ -53,9 +56,13 @@ final class SmartCollectionView: NSCollectionView {
 
     override func mouseDown(with event: NSEvent) {
         let preservedSelection = selectionToPreserveForDrag(event)
+        let inlineRenameIndexPath = inlineRenameCandidateIndexPath(for: event)
         super.mouseDown(with: event)
         if let preservedSelection {
             selectionIndexPaths = preservedSelection
+        }
+        if let inlineRenameIndexPath {
+            requestInlineRenameIfStillSelected(indexPath: inlineRenameIndexPath, event: event)
         }
         if event.clickCount == 2 {
             keyDelegate?.smartCollectionViewDidDoubleClick()
@@ -97,6 +104,33 @@ final class SmartCollectionView: NSCollectionView {
         }
         return selectionIndexPaths
     }
+
+    private func inlineRenameCandidateIndexPath(for event: NSEvent) -> IndexPath? {
+        guard event.clickCount == 1,
+              !event.usesSelectionModifier,
+              selectionIndexPaths.count == 1 else {
+            return nil
+        }
+
+        let point = convert(event.locationInWindow, from: nil)
+        guard let indexPath = indexPathForItem(at: point),
+              selectionIndexPaths.contains(indexPath) else {
+            return nil
+        }
+        return indexPath
+    }
+
+    private func requestInlineRenameIfStillSelected(indexPath: IndexPath, event: NSEvent) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+            guard let self,
+                  self.window?.firstResponder === self,
+                  NSEvent.pressedMouseButtons == 0,
+                  self.selectionIndexPaths == [indexPath] else {
+                return
+            }
+            self.keyDelegate?.smartCollectionViewDidRequestInlineRename(indexPath: indexPath, event: event)
+        }
+    }
 }
 
 final class SmartTableView: NSTableView {
@@ -116,9 +150,13 @@ final class SmartTableView: NSTableView {
 
     override func mouseDown(with event: NSEvent) {
         let preservedSelection = selectionToPreserveForDrag(event)
+        let inlineRenameRow = inlineRenameCandidateRow(for: event)
         super.mouseDown(with: event)
         if let preservedSelection {
             selectRowIndexes(preservedSelection, byExtendingSelection: false)
+        }
+        if let inlineRenameRow {
+            requestInlineRenameIfStillSelected(row: inlineRenameRow, event: event)
         }
         if event.clickCount == 2 {
             keyDelegate?.smartCollectionViewDidDoubleClick()
@@ -161,6 +199,34 @@ final class SmartTableView: NSTableView {
         }
         return selectedRowIndexes
     }
+
+    private func inlineRenameCandidateRow(for event: NSEvent) -> Int? {
+        guard event.clickCount == 1,
+              !event.usesSelectionModifier,
+              selectedRowIndexes.count == 1 else {
+            return nil
+        }
+
+        let point = convert(event.locationInWindow, from: nil)
+        let row = row(at: point)
+        guard row >= 0,
+              selectedRowIndexes.contains(row) else {
+            return nil
+        }
+        return row
+    }
+
+    private func requestInlineRenameIfStillSelected(row: Int, event: NSEvent) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+            guard let self,
+                  self.window?.firstResponder === self,
+                  NSEvent.pressedMouseButtons == 0,
+                  self.selectedRowIndexes == IndexSet(integer: row) else {
+                return
+            }
+            self.keyDelegate?.smartTableView(self, didRequestInlineRenameForRow: row, event: event)
+        }
+    }
 }
 
 private extension NSEvent {
@@ -169,7 +235,7 @@ private extension NSEvent {
     }
 }
 
-final class FileGridViewController: NSViewController, NSCollectionViewDataSource, NSCollectionViewDelegate, NSCollectionViewDelegateFlowLayout, NSTableViewDataSource, NSTableViewDelegate, SmartCollectionViewKeyDelegate {
+final class FileGridViewController: NSViewController, NSCollectionViewDataSource, NSCollectionViewDelegate, NSCollectionViewDelegateFlowLayout, NSTableViewDataSource, NSTableViewDelegate, NSTextFieldDelegate, SmartCollectionViewKeyDelegate {
     var onOpenFolder: ((URL) -> Void)?
     var onColumnFolderChange: ((URL) -> Void)?
     var onStatusChange: ((String) -> Void)?
@@ -179,10 +245,11 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private let directoryStore = DirectoryStore()
     private let fileOperations = FileOperations()
     private let fileInfoProvider = FileInfoProvider()
-    private let folderSizeCalculator = FolderSizeCalculator()
     private let visualIconProvider = VisualIconProvider()
     private let thumbnailPipeline = ThumbnailPipeline()
     private let quickLookController = QuickLookController()
+    private let fileClipboardSession: FileClipboardSession
+    private let fileOperationExecutor: FileOperationExecutor
     private let collectionView = SmartCollectionView()
     private let tableView = SmartTableView()
     private let collectionScrollView = NSScrollView()
@@ -208,6 +275,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private var columnTables: [SmartTableView] = []
     private var columnRootURL: URL?
     private var columnNavigationToken = UUID()
+    private var directoryLoadToken = UUID()
     private var filterText = ""
     private var iconSize: CGFloat = 96
     private var sortMode: FileSortMode = .name
@@ -221,6 +289,21 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private var contextualCreationDirectoryURL: URL?
     private var folderSizeCancellationToken: FolderSizeCancellationToken?
     private var infoWindowControllers: [FileInfoWindowController] = []
+    private weak var inlineRenameField: NSTextField?
+    private var inlineRenameItem: FileItem?
+
+    init(
+        fileClipboardSession: FileClipboardSession = FileClipboardSession(),
+        fileOperationExecutor: FileOperationExecutor = FileOperationExecutor()
+    ) {
+        self.fileClipboardSession = fileClipboardSession
+        self.fileOperationExecutor = fileOperationExecutor
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     override func loadView() {
         let layout = NSCollectionViewFlowLayout()
@@ -344,7 +427,10 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func load(folderURL: URL) {
+        thumbnailPipeline.cancelAll()
         columnNavigationToken = UUID()
+        let requestID = UUID()
+        directoryLoadToken = requestID
         currentFolderURL = folderURL
         allItems = []
         displayedItems = []
@@ -353,32 +439,44 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         updateStatus(prefix: L10n.string("status.loading", fallback: "Loading"))
 
         let options = DirectoryLoadOptions(includesHiddenItems: includesHiddenItems)
-        DispatchQueue.global(qos: .userInitiated).async { [directoryStore] in
-            let result = Result { try directoryStore.loadItems(in: folderURL, options: options) }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.currentFolderURL == folderURL else {
-                    return
-                }
-                switch result {
-                case .success(let items):
-                    self.allItems = items
-                    self.applyCurrentFilter()
-                    if self.viewMode == .column {
-                        self.rebuildColumnView(for: folderURL)
-                    }
-                case .failure(let error):
-                    self.allItems = []
-                    self.displayedItems = []
-                    self.columnFolders = []
-                    self.reloadViews()
-                    self.onStatusChange?(
-                        L10n.format(
-                            "error.cannotReadFolder",
-                            fallback: "Cannot read folder: %@",
-                            error.localizedDescription
-                        )
+        Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                do {
+                    return BackgroundOperationResult.success(
+                        try DirectoryStore().loadItems(in: folderURL, options: options)
                     )
+                } catch {
+                    return BackgroundOperationResult<[FileItem]>.failure(error.localizedDescription)
                 }
+            }.value
+            guard let self,
+                  LatestRequestPolicy.shouldApply(
+                    requestID: requestID,
+                    currentRequestID: self.directoryLoadToken,
+                    requestedURL: folderURL,
+                    currentURL: self.currentFolderURL
+                  ) else {
+                return
+            }
+            switch result {
+            case .success(let items):
+                self.allItems = items
+                self.applyCurrentFilter()
+                if self.viewMode == .column {
+                    self.rebuildColumnView(for: folderURL)
+                }
+            case .failure(let message):
+                self.allItems = []
+                self.displayedItems = []
+                self.columnFolders = []
+                self.reloadViews()
+                self.onStatusChange?(
+                    L10n.format(
+                        "error.cannotReadFolder",
+                        fallback: "Cannot read folder: %@",
+                        message
+                    )
+                )
             }
         }
     }
@@ -395,6 +493,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func setIconSize(_ newSize: CGFloat) {
+        thumbnailPipeline.cancelAll()
         iconSize = min(max(newSize, 64), 180)
         if let layout = collectionView.collectionViewLayout as? NSCollectionViewFlowLayout {
             layout.itemSize = itemSize(forIconSize: iconSize)
@@ -420,10 +519,17 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     func setViewMode(_ mode: FileViewMode) {
         let selectedURLSet = Set(selectedItems().map(\.url))
+        let isLeavingColumnView = viewMode == .column && mode != .column
+        if mode != .icon {
+            thumbnailPipeline.cancelAll()
+        }
         viewMode = mode
         if mode != .column {
             activeColumnIndexForCreation = nil
             contextualCreationDirectoryURL = nil
+        }
+        if isLeavingColumnView {
+            clearColumnView()
         }
         collectionScrollView.isHidden = mode != .icon
         tableScrollView.isHidden = mode != .list
@@ -652,10 +758,15 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
 
         guard let targetURL = dropTargetDirectory(for: tableView, draggingInfo: info, row: row, dropOperation: dropOperation),
-              canAcceptDrop(info, toDirectory: targetURL) else {
+              canAcceptDrop(info, toDirectory: targetURL),
+              let operation = transferOperation(
+                for: info,
+                sourceURLs: fileURLs(from: info.draggingPasteboard),
+                targetDirectoryURL: targetURL
+              ) else {
             return []
         }
-        return transferOperation(for: info) == .copy ? .copy : .move
+        return FileDragOperationResolver.dragOperation(operation)
     }
 
     func tableView(
@@ -706,10 +817,15 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             draggingInfo: draggingInfo,
             proposedIndexPath: proposedDropIndexPath.pointee as IndexPath?,
             dropOperation: proposedDropOperation.pointee
-        ), canAcceptDrop(draggingInfo, toDirectory: targetURL) else {
+        ), canAcceptDrop(draggingInfo, toDirectory: targetURL),
+           let operation = transferOperation(
+            for: draggingInfo,
+            sourceURLs: fileURLs(from: draggingInfo.draggingPasteboard),
+            targetDirectoryURL: targetURL
+           ) else {
             return []
         }
-        return transferOperation(for: draggingInfo) == .copy ? .copy : .move
+        return FileDragOperationResolver.dragOperation(operation)
     }
 
     func collectionView(
@@ -735,8 +851,14 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         let displayName = displayName(for: item)
         let subtitle = subtitle(for: item)
         let fallbackIcon = visualIconProvider.icon(for: item, size: iconSize)
+        let thumbnailSize = CGSize(width: iconSize, height: iconSize)
+        let thumbnailScale = view.window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
 
-        if let cached = thumbnailPipeline.cachedThumbnail(for: item.url) {
+        if let cached = thumbnailPipeline.cachedThumbnail(
+            for: item.url,
+            size: thumbnailSize,
+            scale: thumbnailScale
+        ) {
             cell.configure(
                 name: displayName,
                 subtitle: subtitle,
@@ -765,7 +887,11 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
 
         if ThumbnailPipeline.isThumbnailEligible(item.category) {
-            thumbnailPipeline.thumbnail(for: item, size: CGSize(width: iconSize, height: iconSize)) { [weak self, weak cell] image in
+            thumbnailPipeline.thumbnail(
+                for: item,
+                size: thumbnailSize,
+                scale: thumbnailScale
+            ) { [weak self, weak cell] image in
                 guard let self,
                       let image,
                       cell?.representedObject as? URL == item.url else {
@@ -933,6 +1059,39 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
     }
 
+    func smartCollectionViewDidRequestInlineRename(indexPath: IndexPath, event: NSEvent) {
+        guard displayedItems.indices.contains(indexPath.item),
+              selectedItems().count == 1,
+              let cell = collectionView.item(at: indexPath) as? FileItemCell,
+              cell.containsTitle(atWindowPoint: event.locationInWindow) else {
+            return
+        }
+
+        beginInlineRename(
+            item: displayedItems[indexPath.item],
+            in: collectionView,
+            frame: cell.titleEditingFrame(in: collectionView),
+            alignment: .center,
+            font: FinderFonts.iconTitle(forIconSize: iconSize)
+        )
+    }
+
+    func smartTableView(_ tableView: NSTableView, didRequestInlineRenameForRow row: Int, event: NSEvent) {
+        guard selectedItems().count == 1,
+              let item = item(in: tableView, row: row),
+              let textField = nameTextField(in: tableView, row: row, event: event) else {
+            return
+        }
+
+        beginInlineRename(
+            item: item,
+            in: tableView,
+            frame: textField.convert(textField.bounds.insetBy(dx: -4, dy: -2), to: tableView),
+            alignment: .left,
+            font: FinderFonts.tableCell
+        )
+    }
+
     func createFolder() {
         guard let targetDirectoryURL = creationTargetDirectoryURL() else {
             return
@@ -963,18 +1122,13 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         guard let newName = promptForName(
             title: L10n.string("dialog.rename.title", fallback: "Rename"),
             message: L10n.string("dialog.rename.message", fallback: "Enter a new name."),
-            defaultValue: item.name
+            defaultValue: item.name,
+            selectedRange: FileRenameInputPolicy.editableNameRange(forName: item.name, isDirectory: item.isDirectory)
         ), newName != item.name else {
             return
         }
 
-        do {
-            let renamedURL = try fileOperations.renamePhotoCompanionGroup(item.url, to: newName).first
-                ?? fileOperations.rename(item.url, to: newName)
-            refreshAfterRename(originalURL: item.url, renamedURL: renamedURL, itemWasDirectory: item.isDirectory)
-        } catch {
-            showOperationError(error)
-        }
+        rename(item, to: newName)
     }
 
     func moveSelectedToTrash() {
@@ -988,9 +1142,10 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         )
 
         NSWorkspace.shared.recycle(urls) { [weak self] _, error in
-            DispatchQueue.main.async {
-                if let error {
-                    self?.showOperationError(error)
+            let errorMessage = error?.localizedDescription
+            Task { @MainActor [weak self] in
+                if let errorMessage {
+                    self?.showOperationError(FileOperationExecutionError(message: errorMessage))
                     self?.refresh()
                     return
                 }
@@ -1004,23 +1159,45 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func copySelectionToPasteboard() {
-        writeSelectedFileURLsToPasteboard(operationMarker: FileClipboardPolicy.copyMarker)
+        writeSelectedFileURLsToPasteboard(operation: .copy)
     }
 
     func cutSelectionToPasteboard() {
-        writeSelectedFileURLsToPasteboard(operationMarker: FileClipboardPolicy.moveMarker)
+        writeSelectedFileURLsToPasteboard(operation: .move)
     }
 
-    private func writeSelectedFileURLsToPasteboard(operationMarker: String) {
+    private func writeSelectedFileURLsToPasteboard(operation: FileTransferOperation) {
         let urls = PhotoCompanionFilePolicy.expandedSourceURLs(for: selectedItems().map(\.url))
         guard !urls.isEmpty else {
             return
         }
 
         let pasteboard = NSPasteboard.general
+        let marker: String
+        switch operation {
+        case .copy:
+            marker = FileClipboardPolicy.copyMarker
+            fileClipboardSession.clear()
+        case .move:
+            marker = FileClipboardPolicy.moveMarker(token: UUID().uuidString)
+        }
         pasteboard.clearContents()
-        pasteboard.writeObjects(urls as [NSURL])
-        pasteboard.setString(operationMarker, forType: NSPasteboard.PasteboardType(FileClipboardPolicy.operationPasteboardType))
+        let wroteURLs = pasteboard.writeObjects(urls as [NSURL])
+        let wroteMarker = pasteboard.setString(
+            marker,
+            forType: NSPasteboard.PasteboardType(FileClipboardPolicy.operationPasteboardType)
+        )
+        guard wroteURLs, wroteMarker else {
+            fileClipboardSession.clear()
+            return
+        }
+        if operation == .move {
+            fileClipboardSession.recordMove(
+                marker: marker,
+                pasteboardChangeCount: pasteboard.changeCount,
+                sourceURLs: urls
+            )
+        }
     }
 
     func copySelectedPathsToPasteboard() {
@@ -1073,12 +1250,42 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         transfer(urls, toDirectory: directoryURL, operation: .move)
     }
 
-    func transfer(_ urls: [URL], toDirectory directoryURL: URL, operation: FileTransferOperation) {
-        do {
-            try transferItems(urls, toDirectory: directoryURL, operation: operation)
-        } catch {
-            showOperationError(error)
+    @discardableResult
+    func transfer(
+        _ urls: [URL],
+        toDirectory directoryURL: URL,
+        operation: FileTransferOperation,
+        completion: ((Bool) -> Void)? = nil
+    ) -> Bool {
+        let targetURL = directoryURL.standardizedFileURL
+        let sourceURLs = FileTransferPlan.uniqueSourceURLs(urls).filter { sourceURL in
+            operation != .move || sourceURL.deletingLastPathComponent().standardizedFileURL != targetURL
         }
+        guard !sourceURLs.isEmpty else {
+            completion?(false)
+            return false
+        }
+
+        let affectedDirectories = FileTransferPlan.affectedDirectoryURLs(
+            sourceURLs: sourceURLs,
+            targetDirectoryURL: targetURL
+        )
+        let executor = fileOperationExecutor
+        Task { [weak self] in
+            let result = await executor.transfer(sourceURLs, toDirectory: targetURL, operation: operation)
+            guard let self else {
+                return
+            }
+            self.refreshAfterTransfer(affectedDirectories: affectedDirectories)
+            switch result {
+            case .success:
+                completion?(true)
+            case .failure(let message):
+                self.showOperationError(FileOperationExecutionError(message: message))
+                completion?(false)
+            }
+        }
+        return true
     }
 
     func createFile(fromTemplate kind: FileTemplateKind) {
@@ -1152,29 +1359,13 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
     }
 
-    private func transferItems(_ urls: [URL], toDirectory directoryURL: URL, operation: FileTransferOperation) throws {
-        let sourceURLs = PhotoCompanionFilePolicy.expandedSourceURLs(
-            for: FileTransferPlan.uniqueSourceURLs(urls)
-        )
-        let targetURL = directoryURL.standardizedFileURL
-        let affectedDirectories = FileTransferPlan.affectedDirectoryURLs(
-            sourceURLs: sourceURLs,
-            targetDirectoryURL: directoryURL
-        )
-        var didTransferItem = false
-
-        defer {
-            if didTransferItem {
-                refreshAfterTransfer(affectedDirectories: affectedDirectories)
-            }
-        }
-
-        for url in sourceURLs {
-            if operation == .move && url.deletingLastPathComponent().standardizedFileURL == targetURL {
-                continue
-            }
-            _ = try fileOperations.transfer(url, toDirectory: directoryURL, operation: operation)
-            didTransferItem = true
+    private func rename(_ item: FileItem, to newName: String) {
+        do {
+            let renamedURL = try fileOperations.renamePhotoCompanionGroup(item.url, to: newName).first
+                ?? fileOperations.rename(item.url, to: newName)
+            refreshAfterRename(originalURL: item.url, renamedURL: renamedURL, itemWasDirectory: item.isDirectory)
+        } catch {
+            showOperationError(error)
         }
     }
 
@@ -1335,17 +1526,15 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     private func performDrop(_ info: NSDraggingInfo, toDirectory directoryURL: URL) -> Bool {
         let urls = fileURLs(from: info.draggingPasteboard)
-        guard !urls.isEmpty else {
+        guard !urls.isEmpty,
+              let operation = transferOperation(
+                for: info,
+                sourceURLs: urls,
+                targetDirectoryURL: directoryURL
+              ) else {
             return false
         }
-
-        do {
-            try transferItems(urls, toDirectory: directoryURL, operation: transferOperation(for: info))
-            return true
-        } catch {
-            showOperationError(error)
-            return false
-        }
+        return transfer(urls, toDirectory: directoryURL, operation: operation)
     }
 
     private func canAcceptDrop(_ info: NSDraggingInfo, toDirectory directoryURL: URL) -> Bool {
@@ -1354,28 +1543,42 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             return false
         }
 
-        let targetPath = directoryURL.standardizedFileURL.path
+        let targetPath = directoryURL.resolvingSymlinksInPath().standardizedFileURL.path
         if urls.contains(where: { sourceURL in
-            let sourcePath = sourceURL.standardizedFileURL.path
+            let sourcePath = sourceURL.resolvingSymlinksInPath().standardizedFileURL.path
             return targetPath == sourcePath || targetPath.hasPrefix(sourcePath + "/")
         }) {
             return false
         }
 
-        if transferOperation(for: info) == .move,
-           urls.allSatisfy({ $0.deletingLastPathComponent().standardizedFileURL == directoryURL.standardizedFileURL }) {
+        guard let operation = transferOperation(
+            for: info,
+            sourceURLs: urls,
+            targetDirectoryURL: directoryURL
+        ) else {
+            return false
+        }
+
+        if operation == .move,
+           urls.allSatisfy({
+               $0.deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL.path == targetPath
+           }) {
             return false
         }
 
         return true
     }
 
-    private func transferOperation(for info: NSDraggingInfo) -> FileTransferOperation {
-        if info.draggingSourceOperationMask.contains(.copy),
-           NSEvent.modifierFlags.contains(.option) {
-            return .copy
-        }
-        return .move
+    private func transferOperation(
+        for info: NSDraggingInfo,
+        sourceURLs: [URL],
+        targetDirectoryURL: URL
+    ) -> FileTransferOperation? {
+        FileDragOperationResolver.operation(
+            for: info,
+            sourceURLs: sourceURLs,
+            targetDirectoryURL: targetDirectoryURL
+        )
     }
 
     private func fileURLs(from pasteboard: NSPasteboard) -> [URL] {
@@ -1497,19 +1700,25 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
 
         updateStatus(prefix: L10n.string("status.compressing", fallback: "Compressing"))
-        DispatchQueue.global(qos: .userInitiated).async { [fileOperations] in
-            let result = Result { try fileOperations.compress(urls, in: currentFolderURL) }
-            DispatchQueue.main.async { [weak self] in
-                guard let self else {
-                    return
+        Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                do {
+                    return BackgroundOperationResult.success(
+                        try FileOperations().compress(urls, in: currentFolderURL)
+                    )
+                } catch {
+                    return BackgroundOperationResult<URL>.failure(error.localizedDescription)
                 }
-                switch result {
-                case .success:
-                    self.refresh()
-                case .failure(let error):
-                    self.showOperationError(error)
-                    self.updateStatus()
-                }
+            }.value
+            guard let self else {
+                return
+            }
+            switch result {
+            case .success:
+                self.refresh()
+            case .failure(let message):
+                self.showOperationError(FileOperationExecutionError(message: message))
+                self.updateStatus()
             }
         }
     }
@@ -1526,32 +1735,43 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         folderSizeCancellationToken = cancellationToken
         updateStatus(prefix: L10n.string("status.calculatingFolderSize", fallback: "Calculating folder size"))
 
-        DispatchQueue.global(qos: .utility).async { [folderSizeCalculator] in
-            let result = Result { try folderSizeCalculator.calculateSize(of: item.url, cancellationToken: cancellationToken) }
-            DispatchQueue.main.async { [weak self] in
-                guard let self,
-                      self.folderSizeCancellationToken === cancellationToken else {
-                    return
-                }
-                self.folderSizeCancellationToken = nil
-                switch result {
-                case .success(let sizeResult):
-                    let sizeText = self.byteFormatter.string(fromByteCount: sizeResult.byteSize)
-                    self.onStatusChange?(
-                        L10n.format(
-                            "status.folderSizeResult",
-                            fallback: "%@: %@, %d files",
-                            item.name,
-                            sizeText,
-                            sizeResult.fileCount
+        Task { [weak self] in
+            let result = await Task.detached(priority: .utility) {
+                do {
+                    return FolderSizeExecutionResult.success(
+                        try FolderSizeCalculator().calculateSize(
+                            of: item.url,
+                            cancellationToken: cancellationToken
                         )
                     )
-                case .failure(FolderSizeCalculationError.cancelled):
-                    self.onStatusChange?(L10n.string("status.folderSizeCancelled", fallback: "Folder size calculation cancelled"))
-                case .failure(let error):
-                    self.showOperationError(error)
-                    self.updateStatus()
+                } catch FolderSizeCalculationError.cancelled {
+                    return FolderSizeExecutionResult.cancelled
+                } catch {
+                    return FolderSizeExecutionResult.failure(error.localizedDescription)
                 }
+            }.value
+            guard let self,
+                  self.folderSizeCancellationToken === cancellationToken else {
+                return
+            }
+            self.folderSizeCancellationToken = nil
+            switch result {
+            case .success(let sizeResult):
+                let sizeText = self.byteFormatter.string(fromByteCount: sizeResult.byteSize)
+                self.onStatusChange?(
+                    L10n.format(
+                        "status.folderSizeResult",
+                        fallback: "%@: %@, %d files",
+                        item.name,
+                        sizeText,
+                        sizeResult.fileCount
+                    )
+                )
+            case .cancelled:
+                self.onStatusChange?(L10n.string("status.folderSizeCancelled", fallback: "Folder size calculation cancelled"))
+            case .failure(let message):
+                self.showOperationError(FileOperationExecutionError(message: message))
+                self.updateStatus()
             }
         }
     }
@@ -1595,15 +1815,26 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
 
         let marker = NSPasteboard.general.string(forType: NSPasteboard.PasteboardType(FileClipboardPolicy.operationPasteboardType))
-        let operation = FileClipboardPolicy.operation(forMarker: marker)
+        let pasteboardChangeCount = NSPasteboard.general.changeCount
+        let operation = FileClipboardPolicy.operation(
+            marker: marker,
+            pasteboardChangeCount: pasteboardChangeCount,
+            sourceURLs: urls,
+            trustedMoveClaim: fileClipboardSession.trustedMoveClaim
+        )
+        if operation == .copy {
+            fileClipboardSession.clear()
+        }
 
-        do {
-            try transferItems(urls, toDirectory: currentFolderURL, operation: operation)
-            if operation == .move {
-                NSPasteboard.general.clearContents()
+        _ = transfer(urls, toDirectory: currentFolderURL, operation: operation) { [weak self] succeeded in
+            guard let self, succeeded, operation == .move else {
+                return
             }
-        } catch {
-            showOperationError(error)
+            let pasteboard = NSPasteboard.general
+            if pasteboard.changeCount == pasteboardChangeCount {
+                pasteboard.clearContents()
+            }
+            self.fileClipboardSession.clear()
         }
     }
 
@@ -1882,6 +2113,53 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
     }
 
+    private func item(in tableView: NSTableView, row: Int) -> FileItem? {
+        let items: [FileItem]
+        if tableView === self.tableView {
+            items = displayedItems
+        } else if let columnIndex = columnIndex(for: tableView) {
+            items = itemsForColumn(at: columnIndex)
+        } else {
+            return nil
+        }
+
+        guard items.indices.contains(row) else {
+            return nil
+        }
+        return items[row]
+    }
+
+    private func nameTextField(in tableView: NSTableView, row: Int, event: NSEvent) -> NSTextField? {
+        let point = tableView.convert(event.locationInWindow, from: nil)
+        let column = tableView.column(at: point)
+        guard column >= 0,
+              tableView.tableColumns.indices.contains(column) else {
+            return nil
+        }
+
+        let identifier = tableView.tableColumns[column].identifier.rawValue
+        if tableView === self.tableView {
+            guard identifier == "name" else {
+                return nil
+            }
+        } else {
+            guard identifier == "columnName" else {
+                return nil
+            }
+        }
+
+        guard let cell = tableView.view(atColumn: column, row: row, makeIfNecessary: false) as? NSTableCellView,
+              let textField = cell.textField else {
+            return nil
+        }
+
+        let textPoint = textField.convert(event.locationInWindow, from: nil)
+        guard textField.bounds.insetBy(dx: -4, dy: -4).contains(textPoint) else {
+            return nil
+        }
+        return textField
+    }
+
     private func toggleSelection(for url: URL) {
         guard let index = displayedItems.firstIndex(where: { $0.url == url }) else {
             return
@@ -2035,6 +2313,27 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         scrollColumnViewToTrailingEdge()
     }
 
+    private func clearColumnView() {
+        columnNavigationToken = UUID()
+        for table in columnTables {
+            table.dataSource = nil
+            table.delegate = nil
+            table.keyDelegate = nil
+        }
+        for view in columnDocumentView.subviews {
+            if let scrollView = view as? NSScrollView {
+                scrollView.documentView = nil
+            }
+            view.removeFromSuperview()
+        }
+        columnTables.removeAll(keepingCapacity: false)
+        columnFolders.removeAll(keepingCapacity: false)
+        columnDocumentView.frame = NSRect(
+            origin: .zero,
+            size: columnScrollView.contentSize
+        )
+    }
+
     private func preferredColumnWidths() -> [CGFloat] {
         let attributes: [NSAttributedString.Key: Any] = [.font: FinderFonts.tableCell]
         let columnTextWidths = columnFolders.indices.map { index in
@@ -2108,6 +2407,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
         let token = UUID()
         columnNavigationToken = token
+        directoryLoadToken = UUID()
         currentFolderURL = folderURL
         filterText = ""
         allItems = []
@@ -2134,50 +2434,56 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         updateStatus(prefix: L10n.string("status.loading", fallback: "Loading"))
 
         let options = DirectoryLoadOptions(includesHiddenItems: includesHiddenItems)
-        DispatchQueue.global(qos: .userInitiated).async { [directoryStore] in
-            let result = Result { try directoryStore.loadItems(in: folderURL, options: options) }
-            DispatchQueue.main.async { [weak self] in
-                guard let self,
-                      self.columnNavigationToken == token,
-                      self.currentFolderURL == folderURL else {
-                    return
+        Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                do {
+                    return BackgroundOperationResult.success(
+                        try DirectoryStore().loadItems(in: folderURL, options: options)
+                    )
+                } catch {
+                    return BackgroundOperationResult<[FileItem]>.failure(error.localizedDescription)
                 }
+            }.value
+            guard let self,
+                  self.columnNavigationToken == token,
+                  self.currentFolderURL == folderURL else {
+                return
+            }
 
-                switch result {
-                case .success(let items):
-                    self.allItems = items
-                    self.updateDisplayedItems()
-                    let loadedNextColumn = ColumnFolder(
-                        url: folderURL,
-                        items: self.displayedItems,
-                        selectedURL: nil
+            switch result {
+            case .success(let items):
+                self.allItems = items
+                self.updateDisplayedItems()
+                let loadedNextColumn = ColumnFolder(
+                    url: folderURL,
+                    items: self.displayedItems,
+                    selectedURL: nil
+                )
+                self.columnFolders = ColumnViewSelectionUpdate.replaceTrailingColumns(
+                    in: self.columnFolders,
+                    selectedColumnIndex: columnIndex,
+                    selectedColumn: selectedColumn,
+                    nextColumn: loadedNextColumn
+                )
+                self.rebuildColumnTables()
+                self.updateStatus()
+            case .failure(let message):
+                self.allItems = []
+                self.displayedItems = []
+                self.columnFolders = ColumnViewSelectionUpdate.replaceTrailingColumns(
+                    in: self.columnFolders,
+                    selectedColumnIndex: columnIndex,
+                    selectedColumn: selectedColumn,
+                    nextColumn: nextColumn
+                )
+                self.rebuildColumnTables()
+                self.onStatusChange?(
+                    L10n.format(
+                        "error.cannotReadFolder",
+                        fallback: "Cannot read folder: %@",
+                        message
                     )
-                    self.columnFolders = ColumnViewSelectionUpdate.replaceTrailingColumns(
-                        in: self.columnFolders,
-                        selectedColumnIndex: columnIndex,
-                        selectedColumn: selectedColumn,
-                        nextColumn: loadedNextColumn
-                    )
-                    self.rebuildColumnTables()
-                    self.updateStatus()
-                case .failure(let error):
-                    self.allItems = []
-                    self.displayedItems = []
-                    self.columnFolders = ColumnViewSelectionUpdate.replaceTrailingColumns(
-                        in: self.columnFolders,
-                        selectedColumnIndex: columnIndex,
-                        selectedColumn: selectedColumn,
-                        nextColumn: nextColumn
-                    )
-                    self.rebuildColumnTables()
-                    self.onStatusChange?(
-                        L10n.format(
-                            "error.cannotReadFolder",
-                            fallback: "Cannot read folder: %@",
-                            error.localizedDescription
-                        )
-                    )
-                }
+                )
             }
         }
     }
@@ -2467,6 +2773,96 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         return FileManager.default.displayName(atPath: appURL.path)
     }
 
+    private func beginInlineRename(
+        item: FileItem,
+        in containerView: NSView,
+        frame: NSRect,
+        alignment: NSTextAlignment,
+        font: NSFont
+    ) {
+        finishInlineRename(commit: false)
+
+        let minX = max(0, frame.minX)
+        let editingFrame = NSRect(
+            x: minX,
+            y: frame.minY,
+            width: min(containerView.bounds.width - minX, max(96, frame.width)),
+            height: max(24, min(44, frame.height))
+        )
+        let textField = NSTextField(frame: editingFrame)
+        textField.stringValue = item.name
+        textField.font = font
+        textField.alignment = alignment
+        textField.isEditable = true
+        textField.isSelectable = true
+        textField.isBordered = true
+        textField.drawsBackground = true
+        textField.backgroundColor = .controlBackgroundColor
+        textField.textColor = .labelColor
+        textField.delegate = self
+        textField.lineBreakMode = .byTruncatingTail
+        textField.usesSingleLineMode = true
+
+        inlineRenameItem = item
+        inlineRenameField = textField
+        containerView.addSubview(textField)
+        view.window?.makeFirstResponder(textField)
+        textField.currentEditor()?.selectedRange = FileRenameInputPolicy.editableNameRange(
+            forName: item.name,
+            isDirectory: item.isDirectory
+        )
+    }
+
+    private func finishInlineRename(commit: Bool) {
+        guard let textField = inlineRenameField else {
+            return
+        }
+
+        let item = inlineRenameItem
+        let newName = textField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        inlineRenameField = nil
+        inlineRenameItem = nil
+        textField.delegate = nil
+        textField.removeFromSuperview()
+        view.window?.makeFirstResponder(firstResponderForCurrentViewMode())
+
+        guard commit,
+              let item,
+              !newName.isEmpty,
+              newName != item.name else {
+            return
+        }
+        rename(item, to: newName)
+    }
+
+    func controlTextDidEndEditing(_ notification: Notification) {
+        guard let textField = notification.object as? NSTextField,
+              textField === inlineRenameField else {
+            return
+        }
+        finishInlineRename(commit: true)
+    }
+
+    func control(
+        _ control: NSControl,
+        textView: NSTextView,
+        doCommandBy commandSelector: Selector
+    ) -> Bool {
+        guard control === inlineRenameField else {
+            return false
+        }
+
+        if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+            finishInlineRename(commit: true)
+            return true
+        }
+        if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+            finishInlineRename(commit: false)
+            return true
+        }
+        return false
+    }
+
     private func open(_ fileURL: URL, withApplicationAt appURL: URL) {
         let configuration = NSWorkspace.OpenConfiguration()
         NSWorkspace.shared.open([fileURL], withApplicationAt: appURL, configuration: configuration)
@@ -2530,7 +2926,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         return byteFormatter.string(fromByteCount: byteSize)
     }
 
-    private func promptForName(title: String, message: String, defaultValue: String) -> String? {
+    private func promptForName(
+        title: String,
+        message: String,
+        defaultValue: String,
+        selectedRange: NSRange? = nil
+    ) -> String? {
         guard let window = view.window else {
             return nil
         }
@@ -2544,6 +2945,15 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
         textField.stringValue = defaultValue
         alert.accessoryView = textField
+        alert.window.initialFirstResponder = textField
+
+        if let selectedRange {
+            textField.selectText(nil)
+            textField.currentEditor()?.selectedRange = selectedRange
+            DispatchQueue.main.async {
+                textField.currentEditor()?.selectedRange = selectedRange
+            }
+        }
 
         let response = alert.runModal()
         guard response == .alertFirstButtonReturn else {

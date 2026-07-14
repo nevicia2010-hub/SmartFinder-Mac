@@ -50,17 +50,25 @@ public enum PhotoCompanionFilePolicy {
     }
 
     public static func expandedSourceURLs(for sourceURLs: [URL]) -> [URL] {
-        var expanded: [URL] = []
+        expandedSourceGroups(for: sourceURLs).flatMap { $0 }
+    }
+
+    public static func expandedSourceGroups(for sourceURLs: [URL]) -> [[URL]] {
+        var groups: [[URL]] = []
         var seenPaths = Set<String>()
 
         for sourceURL in sourceURLs {
-            append(sourceURL, to: &expanded, seenPaths: &seenPaths)
+            var group: [URL] = []
+            append(sourceURL, to: &group, seenPaths: &seenPaths)
             for companionURL in companionURLs(for: sourceURL) {
-                append(companionURL, to: &expanded, seenPaths: &seenPaths)
+                append(companionURL, to: &group, seenPaths: &seenPaths)
+            }
+            if !group.isEmpty {
+                groups.append(group)
             }
         }
 
-        return expanded
+        return groups
     }
 
     private static func append(_ url: URL, to urls: inout [URL], seenPaths: inout Set<String>) {

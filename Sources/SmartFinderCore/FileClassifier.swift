@@ -1,7 +1,7 @@
 import Foundation
 import UniformTypeIdentifiers
 
-public enum FileCategory: Equatable, Hashable {
+public enum FileCategory: Equatable, Hashable, Sendable {
     case folder
     case image
     case video

@@ -1,5 +1,37 @@
 # Work Log
 
+## 2026-07-14
+
+### Finder-Style Rename Editing
+
+- Added in-place rename editing from a second click on an already selected item name in icon, list, and column views.
+- Right-click Rename and in-place rename now default-select only the file base name for regular files, preserving extensions such as `.mp4`, `.pdf`, `.jpg`, `.RAF`, and `.xmp` unless the user intentionally edits the extension.
+- Folder rename still selects the whole folder name.
+- Added core coverage for rename edit-range behavior, including regular files, multi-dot names, extensionless files, hidden files, and folders.
+
+### File Operation Safety And Responsiveness
+
+- Rejected rename and creation names that could escape the selected directory through path separators, reserved path components, or control characters.
+- Changed drag negotiation so same-volume drags may move, cross-volume drags copy, Option forces copy, and copy-only sources are never converted into moves.
+- Added a process-local cut claim tied to the exact pasteboard marker, change count, and source URL set; forged or stale markers now paste as copies.
+- Moved copy and move work to one serial background executor so large photography folders do not block AppKit event handling.
+- Made RAW/rendered/sidecar group transfers transactional, with a shared collision suffix and best-effort rollback after partial failure.
+- Added request tokens to directory loads so an older same-folder result cannot overwrite a newer refresh.
+
+### Thumbnail And Photo Metadata Resource Use
+
+- Reduced the default in-memory thumbnail cache ceiling from 256 MB to 128 MB.
+- Made thumbnail cache keys account for requested size and Retina scale, with real pixel-memory costs instead of point-size estimates.
+- Coalesced duplicate Quick Look thumbnail requests and cancel obsolete requests when folders, views, or icon sizes change.
+- Released hidden column tables and their AppKit/CoreAnimation objects when leaving column view; columns are rebuilt only when that view is opened again.
+- Moved ImageIO EXIF/GPS reads to a cancellable utility task and only applies the latest selected-file result.
+- Verified the package with Swift complete concurrency checking without warnings.
+
+### Version And Packaging
+
+- Current local DMG: `SmartFinder-0.8.33.dmg`
+- Current local package version: `0.8.33`
+
 ## 2026-07-09
 
 ### ACR Photo Companion Fix
