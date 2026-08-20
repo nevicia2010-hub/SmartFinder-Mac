@@ -277,6 +277,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private var columnRootURL: URL?
     private var columnNavigationToken = UUID()
     private var directoryLoadToken = UUID()
+    private var selectionURLsToRestoreAfterLoad: Set<URL> = []
     private var filterText = ""
     private var iconSize: CGFloat = 96
     private var sortMode: FileSortMode = .name
@@ -397,23 +398,37 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     private func configureFileDragging(for collectionView: NSCollectionView) {
         collectionView.registerForDraggedTypes([.fileURL])
-        collectionView.setDraggingSourceOperationMask(fileDragSourceOperationMask(), forLocal: true)
-        collectionView.setDraggingSourceOperationMask(fileDragSourceOperationMask(), forLocal: false)
+        collectionView.setDraggingSourceOperationMask(
+            fileDragSourceOperationMask(for: .insideApplication),
+            forLocal: true
+        )
+        collectionView.setDraggingSourceOperationMask(
+            fileDragSourceOperationMask(for: .outsideApplication),
+            forLocal: false
+        )
     }
 
     private func configureFileDragging(for tableView: NSTableView) {
         tableView.registerForDraggedTypes([.fileURL])
-        tableView.setDraggingSourceOperationMask(fileDragSourceOperationMask(), forLocal: true)
-        tableView.setDraggingSourceOperationMask(fileDragSourceOperationMask(), forLocal: false)
+        tableView.setDraggingSourceOperationMask(
+            fileDragSourceOperationMask(for: .insideApplication),
+            forLocal: true
+        )
+        tableView.setDraggingSourceOperationMask(
+            fileDragSourceOperationMask(for: .outsideApplication),
+            forLocal: false
+        )
     }
 
-    private func fileDragSourceOperationMask() -> NSDragOperation {
-        FileDragOperationPolicy.sourceOperations.reduce([]) { mask, operation in
+    private func fileDragSourceOperationMask(for context: FileDragSourceContext) -> NSDragOperation {
+        FileDragOperationPolicy.sourceOperations(for: context).reduce([]) { mask, operation in
             switch operation {
             case .copy:
                 return mask.union(.copy)
             case .move:
                 return mask.union(.move)
+            case .delete:
+                return mask.union(.delete)
             }
         }
     }
@@ -427,11 +442,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         tableView.addTableColumn(column)
     }
 
-    func load(folderURL: URL) {
+    func load(folderURL: URL, selecting selectionURLs: Set<URL> = []) {
         thumbnailPipeline.cancelAll()
         columnNavigationToken = UUID()
         let requestID = UUID()
         directoryLoadToken = requestID
+        selectionURLsToRestoreAfterLoad = Set(selectionURLs.map(\.standardizedFileURL))
         currentFolderURL = folderURL
         startMonitoringDirectory(folderURL)
         allItems = []
@@ -467,7 +483,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                 if self.viewMode == .column {
                     self.rebuildColumnView(for: folderURL)
                 }
+                self.restorePendingSelectionAfterLoad()
             case .failure(let message):
+                self.selectionURLsToRestoreAfterLoad = []
                 self.allItems = []
                 self.displayedItems = []
                 self.columnFolders = []
@@ -533,7 +551,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
             switch result {
             case .success(let items):
-                guard items != self.allItems else {
+                guard items != self.allItems || !self.selectionURLsToRestoreAfterLoad.isEmpty else {
                     return
                 }
                 self.applyExternalDirectoryItems(items, folderURL: folderURL)
@@ -570,6 +588,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                 allItems = items
                 updateDisplayedItems()
                 rebuildColumnView(for: folderURL)
+                restorePendingSelectionAfterLoad()
                 updateStatus()
                 return
             }
@@ -594,6 +613,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             }
         }
 
+        restorePendingSelectionAfterLoad()
         updateStatus()
     }
 
@@ -872,7 +892,18 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         draggingSession session: NSDraggingSession,
         sourceOperationMaskFor context: NSDraggingContext
     ) -> NSDragOperation {
-        [.copy, .move]
+        fileDragSourceOperationMask(
+            for: context == .outsideApplication ? .outsideApplication : .insideApplication
+        )
+    }
+
+    func tableView(
+        _ tableView: NSTableView,
+        draggingSession session: NSDraggingSession,
+        endedAt screenPoint: NSPoint,
+        operation: NSDragOperation
+    ) {
+        refreshAfterExternalDragIfNeeded(operation)
     }
 
     func tableView(
@@ -926,7 +957,18 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         draggingSession session: NSDraggingSession,
         sourceOperationMaskFor context: NSDraggingContext
     ) -> NSDragOperation {
-        [.copy, .move]
+        fileDragSourceOperationMask(
+            for: context == .outsideApplication ? .outsideApplication : .insideApplication
+        )
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        draggingSession session: NSDraggingSession,
+        endedAt screenPoint: NSPoint,
+        dragOperation operation: NSDragOperation
+    ) {
+        refreshAfterExternalDragIfNeeded(operation)
     }
 
     func collectionView(
@@ -1469,23 +1511,20 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func refreshAfterRename(originalURL: URL, renamedURL: URL, itemWasDirectory: Bool) {
-        let folderToLoad = FileRenameNavigationPolicy.folderToLoadAfterRename(
+        let navigationPlan = FileRenameNavigationPolicy.navigationPlanAfterRename(
             originalURL: originalURL,
             renamedURL: renamedURL,
             renamedItemIsDirectory: itemWasDirectory,
             currentFolderURL: currentFolderURL
         )
 
-        guard let folderToLoad else {
+        guard let navigationPlan else {
             refresh()
             return
         }
 
-        if folderToLoad.standardizedFileURL == currentFolderURL?.standardizedFileURL {
-            refresh()
-        } else {
-            load(folderURL: folderToLoad)
-        }
+        let selectionURLs = Set([navigationPlan.selectedURL].compactMap { $0 })
+        load(folderURL: navigationPlan.folderURL, selecting: selectionURLs)
     }
 
     private func rename(_ item: FileItem, to newName: String) {
@@ -1664,6 +1703,15 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             return false
         }
         return transfer(urls, toDirectory: directoryURL, operation: operation)
+    }
+
+    private func refreshAfterExternalDragIfNeeded(_ operation: NSDragOperation) {
+        guard operation.contains(.move) || operation.contains(.delete) else {
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.refreshCurrentFolderSilently()
+        }
     }
 
     private func canAcceptDrop(_ info: NSDraggingInfo, toDirectory directoryURL: URL) -> Bool {
@@ -2843,6 +2891,55 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         case .column:
             selectColumnItems(matching: urls)
         }
+    }
+
+    private func restoreSelectionAfterLoad(_ urls: Set<URL>) {
+        guard !urls.isEmpty else {
+            return
+        }
+
+        switch viewMode {
+        case .icon:
+            let indexPaths = Set(displayedItems.enumerated().compactMap { index, item in
+                urls.contains(item.url.standardizedFileURL) ? IndexPath(item: index, section: 0) : nil
+            })
+            collectionView.selectionIndexPaths = indexPaths
+            if !indexPaths.isEmpty {
+                collectionView.scrollToItems(at: indexPaths, scrollPosition: .nearestHorizontalEdge)
+                view.window?.makeFirstResponder(collectionView)
+            }
+        case .list:
+            let indexes = displayedItems.enumerated().compactMap { index, item in
+                urls.contains(item.url.standardizedFileURL) ? index : nil
+            }
+            tableView.selectRowIndexes(IndexSet(indexes), byExtendingSelection: false)
+            if let firstIndex = indexes.first {
+                tableView.scrollRowToVisible(firstIndex)
+                view.window?.makeFirstResponder(tableView)
+            }
+        case .column:
+            for (columnIndex, table) in columnTables.enumerated().reversed() {
+                let indexes = itemsForColumn(at: columnIndex).enumerated().compactMap { index, item in
+                    urls.contains(item.url.standardizedFileURL) ? index : nil
+                }
+                guard !indexes.isEmpty else {
+                    continue
+                }
+                suppressColumnSelectionChange = true
+                table.selectRowIndexes(IndexSet(indexes), byExtendingSelection: false)
+                suppressColumnSelectionChange = false
+                table.scrollRowToVisible(indexes[0])
+                view.window?.makeFirstResponder(table)
+                break
+            }
+        }
+        updateStatus()
+    }
+
+    private func restorePendingSelectionAfterLoad() {
+        let urls = selectionURLsToRestoreAfterLoad
+        selectionURLsToRestoreAfterLoad = []
+        restoreSelectionAfterLoad(urls)
     }
 
     private func firstResponderForCurrentViewMode() -> NSResponder {

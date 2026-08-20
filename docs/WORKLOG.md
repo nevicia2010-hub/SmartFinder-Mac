@@ -1,5 +1,20 @@
 # Work Log
 
+## 2026-08-20
+
+### Rename Selection And External Dragging
+
+- Kept the renamed file or folder selected after Return confirms a rename in icon, list, and column views.
+- Preserved the pending renamed-item selection when a directory-monitor refresh races the normal reload.
+- Added the external delete drag operation required by the Dock Trash while keeping internal drags limited to copy and move.
+- Added a quiet post-drag refresh after external move or delete operations so the source folder stays current.
+- Added regression coverage for rename selection plans and internal versus external drag source operations.
+
+### Version And Packaging
+
+- Current local DMG: `SmartFinder-0.8.35.dmg`
+- Current local package version: `0.8.35`
+
 ## 2026-07-23
 
 ### External Extraction Refresh

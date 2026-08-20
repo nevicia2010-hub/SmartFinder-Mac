@@ -506,6 +506,19 @@ expect(
     ) == operationsDirectory.standardizedFileURL,
     "renaming a file should keep the current folder loaded"
 )
+let renamedFileNavigationPlan = FileRenameNavigationPolicy.navigationPlanAfterRename(
+    originalURL: operationsDirectory.appendingPathComponent("note.txt"),
+    renamedURL: operationsDirectory.appendingPathComponent("renamed-note.txt"),
+    renamedItemIsDirectory: false,
+    currentFolderURL: operationsDirectory
+)
+expect(
+    renamedFileNavigationPlan?.folderURL == operationsDirectory.standardizedFileURL &&
+    renamedFileNavigationPlan?.selectedURL == operationsDirectory
+        .appendingPathComponent("renamed-note.txt")
+        .standardizedFileURL,
+    "renaming a file should keep the renamed URL selected after reloading its parent"
+)
 
 let visibleDirectoryFile = operationsDirectory.appendingPathComponent("visible.txt")
 let hiddenDirectoryFile = operationsDirectory.appendingPathComponent(".hidden.txt")
@@ -937,17 +950,15 @@ expect(
     FileCreationTargetPolicy.targetDirectory(currentFolderURL: nil, contextualFolderURL: nil) == nil,
     "file creation should be unavailable without any known target folder"
 )
+let internalDragOperations = FileDragOperationPolicy.sourceOperations(for: .insideApplication)
 expect(
-    FileDragOperationPolicy.sourceOperations.contains(.move),
-    "file browser drag sources should allow moving files and folders inside SmartFinder"
+    internalDragOperations == [.copy, .move],
+    "file drags inside SmartFinder should expose copy and move operations"
 )
+let externalDragOperations = FileDragOperationPolicy.sourceOperations(for: .outsideApplication)
 expect(
-    FileDragOperationPolicy.sourceOperations.contains(.copy),
-    "file browser drag sources should allow Option-drag copying files and folders inside SmartFinder"
-)
-expect(
-    FileDragOperationPolicy.sourceOperations.count == 2,
-    "file browser drag sources should expose only copy and move operations"
+    externalDragOperations == [.copy, .move, .delete],
+    "file drags leaving SmartFinder should also expose delete so the Dock Trash can accept them"
 )
 let dropDefaultDirectory = URL(fileURLWithPath: "/tmp/drop-default", isDirectory: true)
 let dropFolderItem = dropDefaultDirectory.appendingPathComponent("Folder B", isDirectory: true)

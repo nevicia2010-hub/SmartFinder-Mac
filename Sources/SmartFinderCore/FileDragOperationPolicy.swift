@@ -1,7 +1,25 @@
 import Foundation
 
+public enum FileDragSourceContext: Equatable, Sendable {
+    case insideApplication
+    case outsideApplication
+}
+
+public enum FileDragSourceOperation: Equatable, Sendable {
+    case copy
+    case move
+    case delete
+}
+
 public enum FileDragOperationPolicy {
-    public static let sourceOperations: [FileTransferOperation] = [.copy, .move]
+    public static func sourceOperations(for context: FileDragSourceContext) -> [FileDragSourceOperation] {
+        switch context {
+        case .insideApplication:
+            return [.copy, .move]
+        case .outsideApplication:
+            return [.copy, .move, .delete]
+        }
+    }
 
     public static func operation(
         sourceAllowsCopy: Bool,
