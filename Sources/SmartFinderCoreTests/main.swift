@@ -540,6 +540,84 @@ let hiddenDirectoryNames = try DirectoryStore().loadItems(
 ).map(\.name)
 expect(hiddenDirectoryNames.contains(".hidden.txt"), "directory loading should show hidden files when requested")
 expect(hiddenDirectoryNames.contains("hidden-attribute"), "directory loading should show Finder-hidden items when requested")
+
+let folderCountDirectory = try temporaryTestDirectory()
+defer {
+    try? FileManager.default.removeItem(at: folderCountDirectory)
+}
+let folderCountNestedDirectory = folderCountDirectory.appendingPathComponent("Nested", isDirectory: true)
+try FileManager.default.createDirectory(at: folderCountNestedDirectory, withIntermediateDirectories: false)
+try "visible".write(
+    to: folderCountDirectory.appendingPathComponent("visible.txt"),
+    atomically: true,
+    encoding: .utf8
+)
+try "nested".write(
+    to: folderCountNestedDirectory.appendingPathComponent("nested.txt"),
+    atomically: true,
+    encoding: .utf8
+)
+try "hidden".write(
+    to: folderCountDirectory.appendingPathComponent(".hidden.txt"),
+    atomically: true,
+    encoding: .utf8
+)
+let folderItemCounter = FolderItemCounter()
+let visibleFolderItemCount = try folderItemCounter.countItems(in: folderCountDirectory)
+expect(
+    visibleFolderItemCount == 2,
+    "folder item counts should include direct visible children without recursively counting nested content"
+)
+let allFolderItemCount = try folderItemCounter.countItems(
+    in: folderCountDirectory,
+    options: DirectoryLoadOptions(includesHiddenItems: true)
+)
+expect(
+    allFolderItemCount == 3,
+    "folder item counts should include hidden direct children when hidden items are enabled"
+)
+let folderCountItem = FileItem(
+    url: folderCountDirectory,
+    name: folderCountDirectory.lastPathComponent,
+    isDirectory: true,
+    category: .folder,
+    modifiedAt: Date(timeIntervalSinceReferenceDate: 100)
+)
+let folderItemCountPipeline = FolderItemCountPipeline(maxConcurrentOperationCount: 1)
+var folderCountCompletionInvoked = false
+var asynchronouslyLoadedFolderCount: Int?
+folderItemCountPipeline.countItems(for: folderCountItem) { count in
+    asynchronouslyLoadedFolderCount = count
+    folderCountCompletionInvoked = true
+}
+let folderCountDeadline = Date().addingTimeInterval(2)
+while !folderCountCompletionInvoked && Date() < folderCountDeadline {
+    RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+}
+expect(folderCountCompletionInvoked, "folder item counts should complete asynchronously")
+expect(asynchronouslyLoadedFolderCount == 2, "folder item count loading should return the direct visible item count")
+expect(
+    folderItemCountPipeline.cachedCount(for: folderCountItem) == 2,
+    "folder item counts should be cached after loading"
+)
+let changedFolderCountItem = FileItem(
+    url: folderCountDirectory,
+    name: folderCountDirectory.lastPathComponent,
+    isDirectory: true,
+    category: .folder,
+    modifiedAt: Date(timeIntervalSinceReferenceDate: 101)
+)
+expect(
+    folderItemCountPipeline.cachedCount(for: changedFolderCountItem) == nil,
+    "folder item count caches should be invalidated by a changed directory modification date"
+)
+expect(
+    folderItemCountPipeline.cachedCount(
+        for: folderCountItem,
+        options: DirectoryLoadOptions(includesHiddenItems: true)
+    ) == nil,
+    "folder item count caches should distinguish hidden-item display settings"
+)
 final class RecordingDirectoryContentProvider: DirectoryContentProviding {
     private(set) var requests: [(path: String, includesHiddenItems: Bool)] = []
     let returnedURLs: [URL]

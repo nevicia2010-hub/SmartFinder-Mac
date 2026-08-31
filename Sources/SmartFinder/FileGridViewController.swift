@@ -247,6 +247,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private let fileInfoProvider = FileInfoProvider()
     private let visualIconProvider = VisualIconProvider()
     private let thumbnailPipeline = ThumbnailPipeline()
+    private let folderItemCountPipeline = FolderItemCountPipeline()
     private let directoryChangeMonitor = DirectoryChangeMonitor()
     private let quickLookController = QuickLookController()
     private let fileClipboardSession: FileClipboardSession
@@ -444,6 +445,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     func load(folderURL: URL, selecting selectionURLs: Set<URL> = []) {
         thumbnailPipeline.cancelAll()
+        folderItemCountPipeline.cancelAll()
         columnNavigationToken = UUID()
         let requestID = UUID()
         directoryLoadToken = requestID
@@ -569,6 +571,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     private func applyExternalDirectoryItems(_ items: [FileItem], folderURL: URL) {
         thumbnailPipeline.cancelAll()
+        folderItemCountPipeline.cancelAll()
 
         switch viewMode {
         case .icon, .list:
@@ -671,6 +674,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         let isLeavingColumnView = viewMode == .column && mode != .column
         if mode != .icon {
             thumbnailPipeline.cancelAll()
+            folderItemCountPipeline.cancelAll()
         }
         viewMode = mode
         if mode != .column {
@@ -1020,7 +1024,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         let item = displayedItems[indexPath.item]
         let cell = collectionView.makeItem(withIdentifier: FileItemCell.reuseIdentifier, for: indexPath) as! FileItemCell
         let displayName = displayName(for: item)
-        let subtitle = subtitle(for: item)
+        let folderCountOptions = DirectoryLoadOptions(includesHiddenItems: includesHiddenItems)
+        let cachedFolderItemCount = folderItemCountPipeline.cachedCount(
+            for: item,
+            options: folderCountOptions
+        )
+        let subtitle = cachedFolderItemCount.map(L10n.itemCount) ?? subtitle(for: item)
         let fallbackIcon = visualIconProvider.icon(for: item, size: iconSize)
         let thumbnailSize = CGSize(width: iconSize, height: iconSize)
         let thumbnailScale = view.window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
@@ -1080,6 +1089,15 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                         self?.toggleSelection(for: url)
                     }
                 )
+            }
+        }
+
+        if item.isDirectory && cachedFolderItemCount == nil {
+            folderItemCountPipeline.countItems(for: item, options: folderCountOptions) { [weak cell] count in
+                guard let count else {
+                    return
+                }
+                cell?.updateSubtitle(L10n.itemCount(count), representedURL: item.url)
             }
         }
 

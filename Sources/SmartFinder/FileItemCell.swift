@@ -137,6 +137,13 @@ final class FileItemCell: NSCollectionViewItem {
         updateTagIndicator(finderLabelNumber: currentFinderLabelNumber)
     }
 
+    func updateSubtitle(_ subtitle: String, representedURL: URL) {
+        guard representedObject as? URL == representedURL else {
+            return
+        }
+        subtitleField.stringValue = subtitle
+    }
+
     func containsTitle(atWindowPoint point: NSPoint) -> Bool {
         let localPoint = titleField.convert(point, from: nil)
         return titleField.bounds.insetBy(dx: -4, dy: -4).contains(localPoint)

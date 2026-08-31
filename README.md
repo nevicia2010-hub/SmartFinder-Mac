@@ -36,7 +36,7 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 - Video files are thumbnail-eligible, so supported formats can show a first-frame preview.
 - PDF and office documents show system type icons instead of generated content thumbnails.
 - Common document, audio, archive, code, and unknown files keep their macOS system default icons.
-- Folders show folder icons.
+- Folders show folder icons with their direct item count underneath in icon view.
 - Unknown files show system type icons.
 - File tiles include a compact type/size subtitle, such as `PDF - 2.4 MB` or `CR3 - 28 MB`.
 - The toolbar can sort the current folder by name, type, size, or modified date.
@@ -74,6 +74,7 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 - Sidebar locations accept dragged files for quick move/copy into common folders or mounted volumes.
 - Context menus include New Folder, New Text File, New Markdown File, New CSV File, Copy Name, Copy Path, Copy Parent Path, and Copy as Shell Path.
 - The status bar shows selected file byte size and available disk space without recursively scanning folders.
+- Folder item counts are loaded on demand with bounded background concurrency and a small cache; nested folders are not recursively scanned.
 - Quick Look works with Space and Command-Y for the current selection.
 - Finder-style keyboard shortcuts include back/forward, parent folder, open selection, view switching, search focus, copy path, refresh, Get Info, and new folder.
 - Sorting supports name, type, size, modified date, plus ascending or descending direction.
@@ -120,13 +121,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.8.35.dmg`
+- `dist/SmartFinder-0.8.36.dmg`
 
 The app is ad-hoc signed for local use. See Security Notice above for the first-launch Gatekeeper warning on other Macs.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.8.35.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.8.36.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 
