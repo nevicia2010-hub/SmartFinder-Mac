@@ -249,8 +249,8 @@ final class MainWindowController: NSWindowController, NSSearchFieldDelegate, NSW
     private var sidebarURLs: [URL] = []
     private var breadcrumbURLs: [URL] = []
     private var navigationHistory = NavigationHistory()
-    private var currentSortMode: FileSortMode = .name
-    private var currentSortDirection: FileSortDirection = .ascending
+    private var currentSortMode: FileSortMode = .initial
+    private var currentSortDirection: FileSortDirection = .initial
     private var currentViewMode: FileViewMode = .icon
     private var activeSharingPicker: NSSharingServicePicker?
     private var toolbarTopConstraint: NSLayoutConstraint?

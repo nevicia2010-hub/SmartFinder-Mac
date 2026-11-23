@@ -57,6 +57,11 @@
 "toolbar.sort.modified" = "Modificado";
 "toolbar.sort.ascending" = "Ascendente";
 "toolbar.sort.descending" = "Descendente";
+"group.date.today" = "Hoy";
+"group.date.pastSevenDays" = "Últimos 7 días";
+"group.date.pastThirtyDays" = "Últimos 30 días";
+"group.date.future" = "Futuro";
+"group.date.undated" = "Sin fecha";
 
 "category.folder" = "Carpeta";
 "category.image" = "Imagen";

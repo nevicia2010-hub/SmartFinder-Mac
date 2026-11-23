@@ -7,11 +7,15 @@ enum FileSortMode: Equatable {
     case type
     case size
     case modified
+
+    static let initial: Self = .modified
 }
 
 enum FileSortDirection: Equatable {
     case ascending
     case descending
+
+    static let initial: Self = .descending
 }
 
 enum FileViewMode: Equatable {
@@ -235,6 +239,27 @@ private extension NSEvent {
     }
 }
 
+private final class DateSectionHeader: NSView {
+    static let reuseIdentifier = NSUserInterfaceItemIdentifier("DateSectionHeader")
+    let label = NSTextField(labelWithString: "")
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        label.font = .systemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -16),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor)
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
 final class FileGridViewController: NSViewController, NSCollectionViewDataSource, NSCollectionViewDelegate, NSCollectionViewDelegateFlowLayout, NSTableViewDataSource, NSTableViewDelegate, NSTextFieldDelegate, SmartCollectionViewKeyDelegate {
     var onOpenFolder: ((URL) -> Void)?
     var onColumnFolderChange: ((URL) -> Void)?
@@ -273,6 +298,17 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private var currentFolderURL: URL?
     private var allItems: [FileItem] = []
     private var displayedItems: [FileItem] = []
+    private var iconSections: [FileModifiedDateOrder.Section] = []
+    private let sectionMonthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("LLLL")
+        return formatter
+    }()
+    private let sectionYearFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("y")
+        return formatter
+    }()
     private var columnFolders: [ColumnFolder] = []
     private var columnTables: [SmartTableView] = []
     private var columnRootURL: URL?
@@ -281,8 +317,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private var selectionURLsToRestoreAfterLoad: Set<URL> = []
     private var filterText = ""
     private var iconSize: CGFloat = 96
-    private var sortMode: FileSortMode = .name
-    private var sortDirection: FileSortDirection = .ascending
+    private var sortMode: FileSortMode = .initial
+    private var sortDirection: FileSortDirection = .initial
     private var viewMode: FileViewMode = .icon
     private var includesHiddenItems = false
     private var showsFileExtensions = true
@@ -302,6 +338,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         self.fileClipboardSession = fileClipboardSession
         self.fileOperationExecutor = fileOperationExecutor
         super.init(nibName: nil, bundle: nil)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(calendarDayChanged),
+            name: .NSCalendarDayChanged,
+            object: nil
+        )
     }
 
     required init?(coder: NSCoder) {
@@ -323,6 +365,11 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         collectionView.allowsMultipleSelection = true
         collectionView.backgroundColors = [.controlBackgroundColor]
         collectionView.register(FileItemCell.self, forItemWithIdentifier: FileItemCell.reuseIdentifier)
+        collectionView.register(
+            DateSectionHeader.self,
+            forSupplementaryViewOfKind: NSCollectionView.elementKindSectionHeader,
+            withIdentifier: DateSectionHeader.reuseIdentifier
+        )
         configureFileDragging(for: collectionView)
 
         collectionScrollView.hasVerticalScroller = true
@@ -453,7 +500,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         currentFolderURL = folderURL
         startMonitoringDirectory(folderURL)
         allItems = []
-        displayedItems = []
+        clearDisplayedItems()
         columnFolders = []
         reloadViews()
         updateStatus(prefix: L10n.string("status.loading", fallback: "Loading"))
@@ -489,7 +536,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             case .failure(let message):
                 self.selectionURLsToRestoreAfterLoad = []
                 self.allItems = []
-                self.displayedItems = []
+                self.clearDisplayedItems()
                 self.columnFolders = []
                 self.reloadViews()
                 self.onStatusChange?(
@@ -660,13 +707,39 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func setSortMode(_ mode: FileSortMode) {
+        guard sortMode != mode else { return }
         sortMode = mode
-        applyCurrentFilter()
+        applySortChange()
     }
 
     func setSortDirection(_ direction: FileSortDirection) {
+        guard sortDirection != direction else { return }
         sortDirection = direction
-        applyCurrentFilter()
+        applySortChange()
+    }
+
+    private func applySortChange() {
+        let selection = Set(selectedItems().map(\.url))
+        updateDisplayedItems()
+        if viewMode == .column {
+            columnFolders = columnFolders.map { folder in
+                ColumnFolder(url: folder.url, items: sortedItems(folder.items), selectedURL: folder.selectedURL)
+            }
+        }
+        reloadViews()
+        if viewMode == .column {
+            selectColumnItems(matching: selection.union(columnFolders.compactMap(\.selectedURL)))
+        } else {
+            select(urls: selection)
+        }
+        updateStatus()
+    }
+
+    @objc private nonisolated func calendarDayChanged() {
+        Task { @MainActor [weak self] in
+            guard let self, self.sortMode == .modified, !self.displayedItems.isEmpty else { return }
+            self.applySortChange()
+        }
     }
 
     func setViewMode(_ mode: FileViewMode) {
@@ -945,15 +1018,78 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         return performDrop(info, toDirectory: targetURL)
     }
 
+    func numberOfSections(in collectionView: NSCollectionView) -> Int {
+        max(1, iconSections.count)
+    }
+
     func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
-        displayedItems.count
+        iconSections.isEmpty ? 0 : iconSections[section].range.count
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        layout collectionViewLayout: NSCollectionViewLayout,
+        referenceSizeForHeaderInSection section: Int
+    ) -> NSSize {
+        sortMode == .modified && iconSections.indices.contains(section)
+            ? NSSize(width: collectionView.bounds.width, height: 24)
+            : .zero
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        viewForSupplementaryElementOfKind kind: NSCollectionView.SupplementaryElementKind,
+        at indexPath: IndexPath
+    ) -> NSView {
+        let header = collectionView.makeSupplementaryView(
+            ofKind: kind,
+            withIdentifier: DateSectionHeader.reuseIdentifier,
+            for: indexPath
+        ) as! DateSectionHeader
+        header.label.stringValue = sectionTitle(for: iconSections[indexPath.section].bucket)
+        return header
+    }
+
+    private func sectionTitle(for bucket: FileModifiedDateOrder.Bucket?) -> String {
+        switch bucket {
+        case .today:
+            return L10n.string("group.date.today", fallback: "Today")
+        case .pastSevenDays:
+            return L10n.string("group.date.pastSevenDays", fallback: "Past 7 Days")
+        case .pastThirtyDays:
+            return L10n.string("group.date.pastThirtyDays", fallback: "Past 30 Days")
+        case let .month(date):
+            return sectionMonthFormatter.string(from: date)
+        case let .year(date):
+            return sectionYearFormatter.string(from: date)
+        case .future:
+            return L10n.string("group.date.future", fallback: "Future")
+        case .undated:
+            return L10n.string("group.date.undated", fallback: "No Date")
+        case nil:
+            return ""
+        }
+    }
+
+    private func collectionItem(at indexPath: IndexPath) -> FileItem? {
+        guard indexPath.count == 2, iconSections.indices.contains(indexPath.section) else { return nil }
+        let range = iconSections[indexPath.section].range
+        guard indexPath.item >= 0, indexPath.item < range.count else { return nil }
+        return displayedItems[range.lowerBound + indexPath.item]
+    }
+
+    private func collectionIndexPaths(matching predicate: (FileItem) -> Bool) -> Set<IndexPath> {
+        var matches: Set<IndexPath> = []
+        for (section, group) in iconSections.enumerated() {
+            for (item, index) in group.range.enumerated() where predicate(displayedItems[index]) {
+                matches.insert(IndexPath(item: item, section: section))
+            }
+        }
+        return matches
     }
 
     func collectionView(_ collectionView: NSCollectionView, pasteboardWriterForItemAt indexPath: IndexPath) -> NSPasteboardWriting? {
-        guard displayedItems.indices.contains(indexPath.item) else {
-            return nil
-        }
-        return displayedItems[indexPath.item].url as NSURL
+        collectionItem(at: indexPath)?.url as NSURL?
     }
 
     func collectionView(
@@ -1021,8 +1157,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
-        let item = displayedItems[indexPath.item]
         let cell = collectionView.makeItem(withIdentifier: FileItemCell.reuseIdentifier, for: indexPath) as! FileItemCell
+        guard let item = collectionItem(at: indexPath) else { return cell }
         let displayName = displayName(for: item)
         let folderCountOptions = DirectoryLoadOptions(includesHiddenItems: includesHiddenItems)
         let cachedFolderItemCount = folderItemCountPipeline.cachedCount(
@@ -1153,8 +1289,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     func smartCollectionViewDidPressCommandA() {
         switch viewMode {
         case .icon:
-            let allIndexPaths = Set(displayedItems.indices.map { IndexPath(item: $0, section: 0) })
-            collectionView.selectionIndexPaths = allIndexPaths
+            collectionView.selectionIndexPaths = collectionIndexPaths { _ in true }
         case .list:
             tableView.selectRowIndexes(IndexSet(integersIn: 0..<displayedItems.count), byExtendingSelection: false)
         case .column:
@@ -1249,7 +1384,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func smartCollectionViewDidRequestInlineRename(indexPath: IndexPath, event: NSEvent) {
-        guard displayedItems.indices.contains(indexPath.item),
+        guard let item = collectionItem(at: indexPath),
               selectedItems().count == 1,
               let cell = collectionView.item(at: indexPath) as? FileItemCell,
               cell.containsTitle(atWindowPoint: event.locationInWindow) else {
@@ -1257,7 +1392,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
 
         beginInlineRename(
-            item: displayedItems[indexPath.item],
+            item: item,
             in: collectionView,
             frame: cell.titleEditingFrame(in: collectionView),
             alignment: .center,
@@ -1668,11 +1803,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private func reloadRowsForMetadataChanges(paths: Set<String>) {
         switch viewMode {
         case .icon:
-            let indexPaths = displayedItems.enumerated().compactMap { index, item in
-                paths.contains(item.url.standardizedFileURL.path) ? IndexPath(item: index, section: 0) : nil
-            }
+            let indexPaths = collectionIndexPaths { paths.contains($0.url.standardizedFileURL.path) }
             if !indexPaths.isEmpty {
-                collectionView.reloadItems(at: Set(indexPaths))
+                collectionView.reloadItems(at: indexPaths)
             }
         case .list:
             let rowIndexes = displayedItems.enumerated().compactMap { index, item in
@@ -1805,22 +1938,20 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     ) -> (indexPath: IndexPath, item: FileItem)? {
         let point = collectionView.convert(draggingInfo.draggingLocation, from: nil)
         guard let indexPath = collectionView.indexPathForItem(at: point),
-              displayedItems.indices.contains(indexPath.item) else {
+              let item = collectionItem(at: indexPath) else {
             return nil
         }
-        return (indexPath, displayedItems[indexPath.item])
+        return (indexPath, item)
     }
 
     private func collectionProposedDropItem(
         indexPath: IndexPath?,
         dropOperation: NSCollectionView.DropOperation
     ) -> FileItem? {
-        guard dropOperation == .on,
-              let indexPath,
-              displayedItems.indices.contains(indexPath.item) else {
+        guard dropOperation == .on, let indexPath else {
             return nil
         }
-        return displayedItems[indexPath.item]
+        return collectionItem(at: indexPath)
     }
 
     private func dropTargetDirectory(
@@ -2183,32 +2314,48 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     private func updateDisplayedItems() {
         let query = filterText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if query.isEmpty {
-            displayedItems = sortedItems(allItems)
+        let items = query.isEmpty ? allItems : allItems.filter {
+            $0.name.localizedCaseInsensitiveContains(query)
+        }
+        let referenceDate = Date.now
+        displayedItems = sortedItems(items, referenceDate: referenceDate)
+        if displayedItems.isEmpty {
+            iconSections = []
+        } else if sortMode == .modified {
+            iconSections = FileModifiedDateOrder.sections(for: displayedItems, referenceDate: referenceDate)
         } else {
-            displayedItems = sortedItems(allItems.filter {
-                $0.name.localizedCaseInsensitiveContains(query)
-            })
+            iconSections = [.init(bucket: nil, range: displayedItems.indices)]
         }
     }
 
-    private func sortedItems(_ items: [FileItem]) -> [FileItem] {
-        items.sorted { left, right in
+    private func clearDisplayedItems() {
+        displayedItems = []
+        iconSections = []
+    }
+
+    private func sortedItems(_ items: [FileItem], referenceDate: Date = .now) -> [FileItem] {
+        let compare: (FileItem, FileItem) -> ComparisonResult
+        switch sortMode {
+        case .modified:
+            return FileModifiedDateOrder.sorted(
+                items,
+                newestFirst: sortDirection == .descending,
+                referenceDate: referenceDate
+            )
+        case .name:
+            compare = nameComparison
+        case .type:
+            compare = typeComparison
+        case .size:
+            compare = sizeComparison
+        }
+
+        return items.sorted { left, right in
             if left.isDirectory != right.isDirectory {
                 return left.isDirectory && !right.isDirectory
             }
 
-            let result: ComparisonResult
-            switch sortMode {
-            case .name:
-                result = nameComparison(left, right)
-            case .type:
-                result = typeComparison(left, right)
-            case .size:
-                result = sizeComparison(left, right)
-            case .modified:
-                result = modifiedComparison(left, right)
-            }
+            let result = compare(left, right)
             return sortDirection == .ascending
                 ? result == .orderedAscending
                 : result == .orderedDescending
@@ -2241,19 +2388,6 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
     }
 
-    private func modifiedComparison(_ left: FileItem, _ right: FileItem) -> ComparisonResult {
-        switch (left.modifiedAt, right.modifiedAt) {
-        case let (leftDate?, rightDate?) where leftDate != rightDate:
-            return leftDate < rightDate ? .orderedAscending : .orderedDescending
-        case (.some, nil):
-            return .orderedAscending
-        case (nil, .some):
-            return .orderedDescending
-        default:
-            return nameComparison(left, right)
-        }
-    }
-
     private func typeSortKey(_ item: FileItem) -> String {
         if item.isDirectory {
             return "0-folder"
@@ -2269,13 +2403,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         switch viewMode {
         case .icon:
             return collectionView.selectionIndexPaths
-                .sorted { $0.item < $1.item }
-                .compactMap { indexPath in
-                    guard displayedItems.indices.contains(indexPath.item) else {
-                        return nil
-                    }
-                    return displayedItems[indexPath.item]
-                }
+                .sorted()
+                .compactMap { collectionItem(at: $0) }
         case .list:
             return tableView.selectedRowIndexes
                 .sorted()
@@ -2356,19 +2485,20 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func toggleSelection(for url: URL) {
-        guard let index = displayedItems.firstIndex(where: { $0.url == url }) else {
-            return
-        }
-
         switch viewMode {
         case .icon:
-            let indexPath = IndexPath(item: index, section: 0)
+            guard let indexPath = collectionIndexPaths(matching: { $0.url == url }).first else {
+                return
+            }
             if collectionView.selectionIndexPaths.contains(indexPath) {
                 collectionView.deselectItems(at: [indexPath])
             } else {
                 collectionView.selectItems(at: [indexPath], scrollPosition: [])
             }
         case .list:
+            guard let index = displayedItems.firstIndex(where: { $0.url == url }) else {
+                return
+            }
             if tableView.selectedRowIndexes.contains(index) {
                 tableView.deselectRow(index)
             } else {
@@ -2607,7 +2737,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         startMonitoringDirectory(folderURL)
         filterText = ""
         allItems = []
-        displayedItems = []
+        clearDisplayedItems()
 
         let selectedColumn = ColumnFolder(
             url: columnFolders[columnIndex].url,
@@ -2665,7 +2795,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                 self.updateStatus()
             case .failure(let message):
                 self.allItems = []
-                self.displayedItems = []
+                self.clearDisplayedItems()
                 self.columnFolders = ColumnViewSelectionUpdate.replaceTrailingColumns(
                     in: self.columnFolders,
                     selectedColumnIndex: columnIndex,
@@ -2897,14 +3027,13 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             return
         }
 
-        let indexes = displayedItems.enumerated().compactMap { index, item in
-            urls.contains(item.url) ? index : nil
-        }
-
         switch viewMode {
         case .icon:
-            collectionView.selectionIndexPaths = Set(indexes.map { IndexPath(item: $0, section: 0) })
+            collectionView.selectionIndexPaths = collectionIndexPaths { urls.contains($0.url) }
         case .list:
+            let indexes = displayedItems.enumerated().compactMap { index, item in
+                urls.contains(item.url) ? index : nil
+            }
             tableView.selectRowIndexes(IndexSet(indexes), byExtendingSelection: false)
         case .column:
             selectColumnItems(matching: urls)
@@ -2918,12 +3047,10 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
         switch viewMode {
         case .icon:
-            let indexPaths = Set(displayedItems.enumerated().compactMap { index, item in
-                urls.contains(item.url.standardizedFileURL) ? IndexPath(item: index, section: 0) : nil
-            })
+            let indexPaths = collectionIndexPaths { urls.contains($0.url.standardizedFileURL) }
             collectionView.selectionIndexPaths = indexPaths
             if !indexPaths.isEmpty {
-                collectionView.scrollToItems(at: indexPaths, scrollPosition: .nearestHorizontalEdge)
+                collectionView.scrollToItems(at: indexPaths, scrollPosition: .nearestVerticalEdge)
                 view.window?.makeFirstResponder(collectionView)
             }
         case .list:

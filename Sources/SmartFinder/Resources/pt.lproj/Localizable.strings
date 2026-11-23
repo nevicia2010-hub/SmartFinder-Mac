@@ -57,6 +57,11 @@
 "toolbar.sort.modified" = "Modificado";
 "toolbar.sort.ascending" = "Crescente";
 "toolbar.sort.descending" = "Decrescente";
+"group.date.today" = "Hoje";
+"group.date.pastSevenDays" = "Últimos 7 dias";
+"group.date.pastThirtyDays" = "Últimos 30 dias";
+"group.date.future" = "Futuro";
+"group.date.undated" = "Sem data";
 
 "category.folder" = "Pasta";
 "category.image" = "Imagem";

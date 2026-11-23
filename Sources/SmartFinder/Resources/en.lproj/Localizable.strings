@@ -57,6 +57,11 @@
 "toolbar.sort.modified" = "Modified";
 "toolbar.sort.ascending" = "Ascending";
 "toolbar.sort.descending" = "Descending";
+"group.date.today" = "Today";
+"group.date.pastSevenDays" = "Past 7 Days";
+"group.date.pastThirtyDays" = "Past 30 Days";
+"group.date.future" = "Future";
+"group.date.undated" = "No Date";
 
 "category.folder" = "Folder";
 "category.image" = "Image";

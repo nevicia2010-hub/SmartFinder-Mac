@@ -618,6 +618,77 @@ expect(
     ) == nil,
     "folder item count caches should distinguish hidden-item display settings"
 )
+
+var dateGroupingCalendar = Calendar(identifier: .gregorian)
+dateGroupingCalendar.timeZone = TimeZone(identifier: "Europe/Rome")!
+func groupTestDate(_ year: Int, _ month: Int, _ day: Int, hour: Int = 0) -> Date {
+    dateGroupingCalendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour))!
+}
+func groupTestItem(_ name: String, _ date: Date?, isDirectory: Bool = false) -> FileItem {
+    FileItem(
+        url: URL(fileURLWithPath: "/tmp/\(name)", isDirectory: isDirectory),
+        name: name,
+        isDirectory: isDirectory,
+        category: isDirectory ? .folder : .document,
+        modifiedAt: date
+    )
+}
+let groupTestNow = groupTestDate(2026, 11, 23, hour: 12)
+let datedItems = [
+    groupTestItem("Undated", nil),
+    groupTestItem("Older October", groupTestDate(2026, 10, 1)),
+    groupTestItem("Future", groupTestDate(2026, 11, 24)),
+    groupTestItem("Today 00:00", groupTestDate(2026, 11, 23)),
+    groupTestItem("7 days ago", groupTestDate(2026, 11, 16)),
+    groupTestItem("8 days ago", groupTestDate(2026, 11, 15)),
+    groupTestItem("30 days ago", groupTestDate(2026, 10, 24)),
+    groupTestItem("31 days ago", groupTestDate(2026, 10, 23)),
+    groupTestItem("September", groupTestDate(2026, 9, 30)),
+    groupTestItem("Last December", groupTestDate(2025, 12, 31)),
+    groupTestItem("Last February", groupTestDate(2025, 2, 1)),
+    groupTestItem("2024", groupTestDate(2024, 12, 31)),
+    groupTestItem("Yesterday", groupTestDate(2026, 11, 22), isDirectory: true)
+]
+let newestItems = FileModifiedDateOrder.sorted(
+    datedItems, newestFirst: true, referenceDate: groupTestNow, calendar: dateGroupingCalendar
+)
+let dateSections = FileModifiedDateOrder.sections(
+    for: newestItems, referenceDate: groupTestNow, calendar: dateGroupingCalendar
+)
+expect(
+    dateSections.map(\.bucket) == [
+        .today, .pastSevenDays, .pastThirtyDays, .month(groupTestDate(2026, 10, 1)),
+        .month(groupTestDate(2026, 9, 1)), .year(groupTestDate(2025, 1, 1)),
+        .year(groupTestDate(2024, 1, 1)), .future, .undated
+    ] &&
+    dateSections.map(\.range) == [0..<1, 1..<3, 3..<5, 5..<7, 7..<8, 8..<10, 10..<11, 11..<12, 12..<13],
+    "date groups should use exclusive local calendar ranges and gather older items by month or year"
+)
+let oldestItems = FileModifiedDateOrder.sorted(
+    datedItems, newestFirst: false, referenceDate: groupTestNow, calendar: dateGroupingCalendar
+)
+let oldestSections = FileModifiedDateOrder.sections(
+    for: oldestItems, referenceDate: groupTestNow, calendar: dateGroupingCalendar
+)
+expect(
+    oldestSections.first?.bucket == .year(groupTestDate(2024, 1, 1)) &&
+    oldestSections.suffix(3).map(\.bucket) == [.today, .future, .undated],
+    "ascending date order should reverse the dated groups and keep the future and undated groups last"
+)
+let yearBoundarySections = FileModifiedDateOrder.sections(
+    for: [
+        groupTestItem("December 31", groupTestDate(2025, 12, 31)),
+        groupTestItem("December 10", groupTestDate(2025, 12, 10)),
+        groupTestItem("November 30", groupTestDate(2025, 11, 30))
+    ],
+    referenceDate: groupTestDate(2026, 1, 3),
+    calendar: dateGroupingCalendar
+)
+expect(
+    yearBoundarySections.map(\.bucket) == [.pastSevenDays, .pastThirtyDays, .year(groupTestDate(2025, 1, 1))],
+    "the rolling recent ranges should cross into the previous year"
+)
+
 final class RecordingDirectoryContentProvider: DirectoryContentProviding {
     private(set) var requests: [(path: String, includesHiddenItems: Bool)] = []
     let returnedURLs: [URL]

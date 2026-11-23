@@ -57,6 +57,11 @@
 "toolbar.sort.modified" = "Modificato";
 "toolbar.sort.ascending" = "Crescente";
 "toolbar.sort.descending" = "Decrescente";
+"group.date.today" = "Oggi";
+"group.date.pastSevenDays" = "Ultimi 7 giorni";
+"group.date.pastThirtyDays" = "Ultimi 30 giorni";
+"group.date.future" = "Futuro";
+"group.date.undated" = "Senza data";
 
 "category.folder" = "Cartella";
 "category.image" = "Immagine";

@@ -57,6 +57,11 @@
 "toolbar.sort.modified" = "수정일";
 "toolbar.sort.ascending" = "오름차순";
 "toolbar.sort.descending" = "내림차순";
+"group.date.today" = "오늘";
+"group.date.pastSevenDays" = "지난 7일";
+"group.date.pastThirtyDays" = "지난 30일";
+"group.date.future" = "미래";
+"group.date.undated" = "날짜 없음";
 
 "category.folder" = "폴더";
 "category.image" = "이미지";

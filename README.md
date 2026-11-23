@@ -37,6 +37,7 @@ The demo folder used for this screenshot is included at `demo/SmartFinderDemoFil
 - PDF and office documents show system type icons instead of generated content thumbnails.
 - Common document, audio, archive, code, and unknown files keep their macOS system default icons.
 - Folders show folder icons with their direct item count underneath in icon view.
+- Icon view defaults to modification date groups: Today, Past 7 Days, Past 30 Days, earlier months this year, and previous years.
 - Unknown files show system type icons.
 - File tiles include a compact type/size subtitle, such as `PDF - 2.4 MB` or `CR3 - 28 MB`.
 - The toolbar can sort the current folder by name, type, size, or modified date.
@@ -121,13 +122,13 @@ If `--path` is omitted, SmartFinder opens the user's home folder.
 The script creates:
 
 - `.build/package/SmartFinder.app`
-- `dist/SmartFinder-0.8.36.dmg`
+- `dist/SmartFinder-0.8.37.dmg`
 
 The app is ad-hoc signed for local use. See Security Notice above for the first-launch Gatekeeper warning on other Macs.
 
 ## Install from DMG
 
-Open `dist/SmartFinder-0.8.36.dmg`, then drag `SmartFinder.app` to `Applications`.
+Open `dist/SmartFinder-0.8.37.dmg`, then drag `SmartFinder.app` to `Applications`.
 
 ## RAW Photo Files
 

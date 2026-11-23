@@ -57,6 +57,11 @@
 "toolbar.sort.modified" = "修改日期";
 "toolbar.sort.ascending" = "升冪";
 "toolbar.sort.descending" = "降冪";
+"group.date.today" = "今天";
+"group.date.pastSevenDays" = "過去 7 天";
+"group.date.pastThirtyDays" = "過去 30 天";
+"group.date.future" = "未來";
+"group.date.undated" = "無日期";
 
 "category.folder" = "資料夾";
 "category.image" = "圖片";

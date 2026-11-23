@@ -57,6 +57,11 @@
 "toolbar.sort.modified" = "変更日";
 "toolbar.sort.ascending" = "昇順";
 "toolbar.sort.descending" = "降順";
+"group.date.today" = "今日";
+"group.date.pastSevenDays" = "過去7日間";
+"group.date.pastThirtyDays" = "過去30日間";
+"group.date.future" = "未来";
+"group.date.undated" = "日付なし";
 
 "category.folder" = "フォルダ";
 "category.image" = "画像";
