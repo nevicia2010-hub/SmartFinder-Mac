@@ -485,6 +485,38 @@ expect(
     ) == operationsDirectory.standardizedFileURL,
     "removing a child item should keep the current folder loaded"
 )
+expect(
+    FileRemovalNavigationPolicy.updateAfterRemoval(
+        removedURLs: [deletedFolder],
+        currentFolderURL: operationsDirectory,
+        isColumnView: false
+    ) == .refreshCurrentFolder,
+    "removing a visible child should refresh the current items without navigating"
+)
+expect(
+    FileRemovalNavigationPolicy.updateAfterRemoval(
+        removedURLs: [operationsDirectory.appendingPathComponent("Selected in an earlier column.txt")],
+        currentFolderURL: deletedChildFolder,
+        isColumnView: true
+    ) == .refreshColumns([operationsDirectory.standardizedFileURL]),
+    "removing an item from an earlier column should refresh that column instead of rebuilding the browser"
+)
+expect(
+    FileRemovalNavigationPolicy.updateAfterRemoval(
+        removedURLs: [deletedChildFolder, deletedFolder],
+        currentFolderURL: deletedChildFolder,
+        isColumnView: true
+    ) == .navigate(operationsDirectory.standardizedFileURL),
+    "when multiple ancestors are removed, navigation must land outside every removed folder"
+)
+expect(
+    FileRemovalNavigationPolicy.updateAfterRemoval(
+        removedURLs: [deletedFolder],
+        currentFolderURL: operationsDirectory.appendingPathComponent("Now Browsing", isDirectory: true),
+        isColumnView: false
+    ) == .none,
+    "a deletion that finishes after navigating elsewhere should not reload an unrelated folder"
+)
 let originalRenamedFolder = operationsDirectory.appendingPathComponent("Folder Before Rename", isDirectory: true)
 let newRenamedFolder = operationsDirectory.appendingPathComponent("Folder After Rename", isDirectory: true)
 let renamedChildFolder = originalRenamedFolder.appendingPathComponent("Child", isDirectory: true)

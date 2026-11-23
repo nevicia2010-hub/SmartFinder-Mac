@@ -38,7 +38,7 @@ protocol SmartCollectionViewKeyDelegate: AnyObject {
     func smartCollectionViewDidPressNewFolder()
     func smartCollectionViewDidPressMoveToTrash()
     func smartCollectionViewDidPressGetInfo()
-    func smartCollectionViewDidRightClick(event: NSEvent)
+    func smartCollectionViewDidRightClick(event: NSEvent, from source: NSView)
     func smartCollectionViewDidRequestInlineRename(indexPath: IndexPath, event: NSEvent)
     func smartTableView(_ tableView: NSTableView, didRequestInlineRenameForRow row: Int, event: NSEvent)
 }
@@ -74,7 +74,7 @@ final class SmartCollectionView: NSCollectionView {
     }
 
     override func rightMouseDown(with event: NSEvent) {
-        keyDelegate?.smartCollectionViewDidRightClick(event: event)
+        keyDelegate?.smartCollectionViewDidRightClick(event: event, from: self)
     }
 
     @objc func copy(_ sender: Any?) {
@@ -171,7 +171,7 @@ final class SmartTableView: NSTableView {
     }
 
     override func rightMouseDown(with event: NSEvent) {
-        keyDelegate?.smartCollectionViewDidRightClick(event: event)
+        keyDelegate?.smartCollectionViewDidRightClick(event: event, from: self)
     }
 
     @objc func copy(_ sender: Any?) {
@@ -1359,35 +1359,39 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         showInfoForSelection()
     }
 
-    func smartCollectionViewDidRightClick(event: NSEvent) {
+    func smartCollectionViewDidRightClick(event: NSEvent, from source: NSView) {
         switch viewMode {
         case .icon:
             contextualCreationDirectoryURL = nil
             activeColumnIndex = nil
             let point = collectionView.convert(event.locationInWindow, from: nil)
-            if let indexPath = collectionView.indexPathForItem(at: point),
-               !collectionView.selectionIndexPaths.contains(indexPath) {
-                collectionView.selectionIndexPaths = [indexPath]
-                updateStatus()
+            if let indexPath = collectionView.indexPathForItem(at: point) {
+                if !collectionView.selectionIndexPaths.contains(indexPath) {
+                    collectionView.selectionIndexPaths = [indexPath]
+                }
+            } else {
+                collectionView.selectionIndexPaths = []
             }
-
-            contextMenu().popUp(positioning: nil, at: point, in: collectionView)
+            updateStatus()
+            NSMenu.popUpContextMenu(contextMenu(), with: event, for: collectionView)
         case .list:
             contextualCreationDirectoryURL = nil
             activeColumnIndex = nil
             let point = tableView.convert(event.locationInWindow, from: nil)
             let row = tableView.row(at: point)
-            if row >= 0, !tableView.selectedRowIndexes.contains(row) {
+            if row < 0 {
+                tableView.deselectAll(nil)
+            } else if !tableView.selectedRowIndexes.contains(row) {
                 tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
-                updateStatus()
             }
-
-            contextMenu().popUp(positioning: nil, at: point, in: tableView)
+            updateStatus()
+            NSMenu.popUpContextMenu(contextMenu(), with: event, for: tableView)
         case .column:
-            guard let target = columnTable(atWindowPoint: event.locationInWindow) else {
+            guard let target = source as? SmartTableView,
+                  let index = columnIndex(for: target) else {
                 return
             }
-            activeColumnIndex = columnIndex(for: target)
+            activeColumnIndex = index
             contextualCreationDirectoryURL = activeColumnDirectoryURL()
             view.window?.makeFirstResponder(target)
 
@@ -1402,7 +1406,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             suppressColumnSelectionChange = false
             updateStatus()
 
-            contextMenu().popUp(positioning: nil, at: point, in: target)
+            NSMenu.popUpContextMenu(contextMenu(), with: event, for: target)
         }
     }
 
@@ -1479,27 +1483,39 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     func moveSelectedToTrash() {
-        let urls = PhotoCompanionFilePolicy.expandedSourceURLs(for: selectedItems().map(\.url))
+        moveToTrash(selectedItems().map(\.url))
+    }
+
+    private func moveToTrash(_ selection: [URL]) {
+        let urls = PhotoCompanionFilePolicy.expandedSourceURLs(for: selection)
         guard !urls.isEmpty else {
             return
         }
-        let folderToLoadAfterRemoval = FileRemovalNavigationPolicy.folderToLoadAfterRemoval(
-            removedURLs: urls,
-            currentFolderURL: currentFolderURL
-        )
 
-        NSWorkspace.shared.recycle(urls) { [weak self] _, error in
+        NSWorkspace.shared.recycle(urls) { [weak self] recycled, error in
+            let removedURLs = Array(recycled.keys)
             let errorMessage = error?.localizedDescription
             Task { @MainActor [weak self] in
-                if let errorMessage {
-                    self?.showOperationError(FileOperationExecutionError(message: errorMessage))
-                    self?.refresh()
-                    return
+                guard let self else { return }
+                switch FileRemovalNavigationPolicy.updateAfterRemoval(
+                    removedURLs: removedURLs, currentFolderURL: self.currentFolderURL,
+                    isColumnView: self.viewMode == .column
+                ) {
+                case .none:
+                    break
+                case .navigate(let folderURL):
+                    if let onOpenFolder = self.onOpenFolder {
+                        onOpenFolder(folderURL)
+                    } else {
+                        self.load(folderURL: folderURL)
+                    }
+                case .refreshCurrentFolder:
+                    self.refreshCurrentFolderSilently()
+                case .refreshColumns(let directories):
+                    self.refreshAffectedColumnFolders(directories)
                 }
-                if let folderToLoadAfterRemoval {
-                    self?.load(folderURL: folderToLoadAfterRemoval)
-                } else {
-                    self?.refresh()
+                if let errorMessage {
+                    self.showOperationError(FileOperationExecutionError(message: errorMessage))
                 }
             }
         }
@@ -2304,8 +2320,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         renameSelection()
     }
 
-    @objc private func moveToTrashFromMenu() {
-        moveSelectedToTrash()
+    @objc private func moveToTrashFromMenu(_ sender: NSMenuItem) {
+        guard let selection = sender.representedObject as? [URL] else { return }
+        moveToTrash(selection)
     }
 
     @objc private func copyFromMenu() {
@@ -2934,13 +2951,6 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         columnTables.firstIndex { $0 === tableView }
     }
 
-    private func columnTable(atWindowPoint point: NSPoint) -> SmartTableView? {
-        columnTables.first { table in
-            let localPoint = table.convert(point, from: nil)
-            return table.bounds.contains(localPoint)
-        }
-    }
-
     private func columnTableCell(for tableView: NSTableView, row: Int) -> NSView? {
         guard let columnIndex = columnIndex(for: tableView) else {
             return nil
@@ -2979,7 +2989,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     private func contextMenu() -> NSMenu {
         let menu = NSMenu()
-        let hasSelection = !selectedItems().isEmpty
+        menu.autoenablesItems = false
+        let selection = selectedItems()
+        let hasSelection = !selection.isEmpty
         let canCreate = creationTargetDirectoryURL() != nil
 
         menu.addItem(menuItem("menu.open", fallback: "Open", action: #selector(openSelectedItemFromMenu), enabled: hasSelection))
@@ -2991,8 +3003,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         menu.addItem(menuItem("menu.newTextFile", fallback: "New Text File", action: #selector(createTextFileFromMenu), enabled: canCreate))
         menu.addItem(menuItem("menu.newMarkdownFile", fallback: "New Markdown File", action: #selector(createMarkdownFileFromMenu), enabled: canCreate))
         menu.addItem(menuItem("menu.newCSVFile", fallback: "New CSV File", action: #selector(createCSVFileFromMenu), enabled: canCreate))
-        menu.addItem(menuItem("menu.rename", fallback: "Rename", action: #selector(renameFromMenu), enabled: selectedItems().count == 1))
-        menu.addItem(menuItem("menu.moveToTrash", fallback: "Move to Trash", action: #selector(moveToTrashFromMenu), enabled: hasSelection))
+        menu.addItem(menuItem("menu.rename", fallback: "Rename", action: #selector(renameFromMenu), enabled: selection.count == 1))
+        let trashItem = menuItem(
+            "menu.moveToTrash", fallback: "Move to Trash", action: #selector(moveToTrashFromMenu(_:)), enabled: hasSelection
+        )
+        trashItem.representedObject = selection.map(\.url)
+        menu.addItem(trashItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(menuItem("menu.cut", fallback: "Cut", action: #selector(cutFromMenu), enabled: hasSelection))
         menu.addItem(menuItem("menu.copy", fallback: "Copy", action: #selector(copyFromMenu), enabled: hasSelection))
