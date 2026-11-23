@@ -35,11 +35,11 @@ public enum ColumnViewPath {
         }
 
         var urls = [rootURL]
-        var cumulativePath = rootPath
-        let relativePath = String(focusedPath.dropFirst(rootPath.count + 1))
-        for part in relativePath.split(separator: "/").map(String.init) {
-            cumulativePath += "/\(part)"
-            urls.append(URL(fileURLWithPath: cumulativePath, isDirectory: true))
+        var currentURL = rootURL
+        let relativePath = focusedPath.dropFirst(rootPath == "/" ? 1 : rootPath.count + 1)
+        for part in relativePath.split(separator: "/") {
+            currentURL.appendPathComponent(String(part), isDirectory: true)
+            urls.append(currentURL)
         }
         return urls
     }

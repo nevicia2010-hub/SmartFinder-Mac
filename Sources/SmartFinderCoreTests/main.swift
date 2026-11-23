@@ -330,6 +330,24 @@ expect(
     "group rename should preserve companion extensions"
 )
 
+let caseRenameDirectory = try fileOperations.createFolder(named: "case-rename", in: operationsDirectory)
+let originalRaw = try fileOperations.createFile(named: "Shoot.CR3", contents: "raw", in: caseRenameDirectory)
+try fileOperations.createFile(named: "Shoot.xmp", contents: "sidecar", in: caseRenameDirectory)
+do {
+    try fileOperations.renamePhotoCompanionGroup(originalRaw, to: "shoot.xmp")
+    expect(false, "a real conflict between the photo and its sidecar must be rejected")
+} catch FileOperationError.destinationExists {
+    let originalNames = try FileManager.default.contentsOfDirectory(atPath: caseRenameDirectory.path)
+    expect(Set(originalNames) == ["Shoot.CR3", "Shoot.xmp"], "a rename conflict should leave the entire group intact")
+}
+let caseRenamedGroup = try? fileOperations.renamePhotoCompanionGroup(originalRaw, to: "shoot.CR3")
+let caseRenamedNames = try FileManager.default.contentsOfDirectory(atPath: caseRenameDirectory.path)
+expect(
+    caseRenamedGroup?.map(\.lastPathComponent).sorted() == ["shoot.CR3", "shoot.xmp"] &&
+        Set(caseRenamedNames) == ["shoot.CR3", "shoot.xmp"],
+    "renaming only the case should rename the photo and its sidecar on disk"
+)
+
 let collisionSourceDirectory = operationsDirectory.appendingPathComponent("photo-collision-source", isDirectory: true)
 let collisionTargetDirectory = operationsDirectory.appendingPathComponent("photo-collision-target", isDirectory: true)
 try FileManager.default.createDirectory(at: collisionSourceDirectory, withIntermediateDirectories: true)
@@ -720,6 +738,13 @@ expect(
     injectedItems.map(\.name) == ["provider-item.txt"],
     "directory loading should build file items from provider-supplied URLs"
 )
+let vanishedEntry = operationsDirectory.appendingPathComponent("vanished-after-enumerating.pdf")
+let staleListing = RecordingDirectoryContentProvider(returnedURLs: [vanishedEntry, injectedListFile])
+let survivingItems = try? DirectoryStore(contentProvider: staleListing).loadItems(in: operationsDirectory)
+expect(
+    survivingItems?.map(\.url) == [injectedListFile],
+    "a vanished entry must not discard the rest of the directory listing"
+)
 let symlinkTargetDirectory = try fileOperations.createFolder(named: "Symlink Target", in: operationsDirectory)
 let symlinkDirectory = operationsDirectory.appendingPathComponent("Macintosh HD")
 try FileManager.default.createSymbolicLink(at: symlinkDirectory, withDestinationURL: symlinkTargetDirectory)
@@ -843,6 +868,14 @@ expect(
 expect(
     columnPath.map { $0.selectedURL?.path ?? "" } == ["/Users", "/Users/bingwang", "/Users/bingwang/Pictures", "/Users/bingwang/Pictures/RAW", ""],
     "column view path should select the next folder in each parent column"
+)
+let systemDiskPath = ColumnViewPath.columns(
+    for: breadcrumbURL,
+    rootURL: URL(fileURLWithPath: "/", isDirectory: true)
+)
+expect(
+    systemDiskPath == columnPath,
+    "anchoring columns at the system disk must preserve the first character of the top-level folder"
 )
 let volumeRootURL = URL(fileURLWithPath: "/Volumes/lavoro", isDirectory: true)
 let volumeChildURL = volumeRootURL.appendingPathComponent("01_2026_工作资料", isDirectory: true)
@@ -1065,6 +1098,30 @@ let dashedArchiveSource = operationsDirectory.appendingPathComponent("-dash.txt"
 try "dash".write(to: dashedArchiveSource, atomically: true, encoding: .utf8)
 let dashedArchiveURL = try fileOperations.compress([dashedArchiveSource], in: operationsDirectory)
 expect(FileManager.default.fileExists(atPath: dashedArchiveURL.path), "compress should handle names that begin with a dash")
+
+let archiveTarget = try fileOperations.createFolder(named: "archive-target", in: operationsDirectory)
+try fileOperations.createFile(named: archiveSource.lastPathComponent, contents: "wrong-item", in: archiveTarget)
+let archiveFromOtherFolder = try fileOperations.compress([archiveSource], in: archiveTarget)
+let extractArchive = Process()
+let archiveOutput = Pipe()
+extractArchive.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+extractArchive.arguments = ["-p", archiveFromOtherFolder.path, archiveSource.lastPathComponent]
+extractArchive.standardOutput = archiveOutput
+try extractArchive.run()
+let archivedContents = archiveOutput.fileHandleForReading.readDataToEndOfFile()
+extractArchive.waitUntilExit()
+expect(
+    extractArchive.terminationStatus == 0 && String(decoding: archivedContents, as: UTF8.self) == "archive-me",
+    "compression should archive the selected source even when the output directory contains a same-named file"
+)
+do {
+    try fileOperations.compress([archiveSource, archiveTarget.appendingPathComponent(archiveSource.lastPathComponent)], in: archiveTarget)
+    expect(false, "compression must reject a mixed-directory selection before choosing archive entries")
+} catch FileOperationError.mixedCompressionSourceFolders {
+    let names = try FileManager.default.contentsOfDirectory(atPath: archiveTarget.path)
+    expect(!names.contains("Archive.zip"), "a rejected compression must not leave an archive")
+}
+
 let firstTemplateFile = try fileOperations.createFile(fromTemplate: .plainText, in: operationsDirectory)
 let secondTemplateFile = try fileOperations.createFile(fromTemplate: .plainText, in: operationsDirectory)
 let csvTemplateFile = try fileOperations.createFile(fromTemplate: .csv, in: operationsDirectory)

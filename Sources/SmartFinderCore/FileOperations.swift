@@ -2,6 +2,7 @@ import Foundation
 
 public enum FileOperationError: Error, LocalizedError {
     case emptyCompressionSelection
+    case mixedCompressionSourceFolders
     case compressionFailed(String)
     case destinationExists(String)
     case transactionFailed(String)
@@ -10,6 +11,8 @@ public enum FileOperationError: Error, LocalizedError {
         switch self {
         case .emptyCompressionSelection:
             return "No files were selected for compression."
+        case .mixedCompressionSourceFolders:
+            return "Select files from the same folder to compress them together."
         case .compressionFailed(let message):
             return message.isEmpty ? "Compression failed." : message
         case .destinationExists(let path):
@@ -130,35 +133,59 @@ public final class FileOperations {
             }
             destinationPaths.insert(destinationPath)
 
-            if sourcePath != destinationPath, fileManager.fileExists(atPath: destinationPath) {
+            if sourcePath != destinationPath, fileManager.fileExists(atPath: destinationPath),
+               !isCaseOnlyRenameOfSameItem(from: pair.source, to: pair.destination) {
                 throw FileOperationError.destinationExists(destinationPath)
             }
         }
 
-        let plan = renamePairs.map { PlannedMutation(source: $0.source, destination: $0.destination) }
-        return try execute(plan, operation: .move)
+        let plan = renamePairs.compactMap { pair -> PlannedMutation? in
+            guard pair.source.standardizedFileURL.path != pair.destination.standardizedFileURL.path else {
+                return nil
+            }
+            return PlannedMutation(source: pair.source, destination: pair.destination)
+        }
+        try execute(plan, operation: .move)
+        return renamePairs.map(\.destination)
+    }
+
+    private func isCaseOnlyRenameOfSameItem(from source: URL, to destination: URL) -> Bool {
+        guard source.lastPathComponent.caseInsensitiveCompare(destination.lastPathComponent) == .orderedSame,
+              let sourceValues = try? source.resourceValues(forKeys: [.volumeSupportsCaseSensitiveNamesKey, .fileResourceIdentifierKey]),
+              sourceValues.volumeSupportsCaseSensitiveNames == false,
+              let sourceID = sourceValues.fileResourceIdentifier as? NSObject,
+              let destinationID = try? destination.resourceValues(forKeys: [.fileResourceIdentifierKey]).fileResourceIdentifier else {
+            return false
+        }
+        return sourceID.isEqual(destinationID)
     }
 
     @discardableResult
     public func compress(_ sourceURLs: [URL], in directoryURL: URL) throws -> URL {
-        guard !sourceURLs.isEmpty else {
+        guard let first = sourceURLs.first else {
             throw FileOperationError.emptyCompressionSelection
+        }
+        let sourceDirectory = first.deletingLastPathComponent().standardizedFileURL
+        guard sourceURLs.allSatisfy({
+            $0.deletingLastPathComponent().standardizedFileURL == sourceDirectory
+        }) else {
+            throw FileOperationError.mixedCompressionSourceFolders
         }
 
         let archiveURL = uniqueArchiveURL(for: sourceURLs, in: directoryURL)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
-        process.currentDirectoryURL = directoryURL
-        process.arguments = ["-qry", archiveURL.path, "--"] + sourceURLs.map(\.lastPathComponent)
+        process.currentDirectoryURL = sourceDirectory
+        process.arguments = ["-qry", "-MM", "-nw", archiveURL.path, "--"] + sourceURLs.map(\.lastPathComponent)
 
         let errorPipe = Pipe()
         process.standardError = errorPipe
 
         try process.run()
+        let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
 
         guard process.terminationStatus == 0 else {
-            let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
             let message = String(data: data, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             throw FileOperationError.compressionFailed(message)
@@ -319,6 +346,7 @@ public final class FileOperations {
         )
     }
 
+    @discardableResult
     private func execute(
         _ mutations: [PlannedMutation],
         operation: FileTransferOperation

@@ -49,8 +49,15 @@ public final class DirectoryStore {
             includesHiddenItems: options.includesHiddenItems
         )
 
-        return try urls.map { url in
-            let values = try url.resourceValues(forKeys: keys)
+        return try urls.compactMap { url -> FileItem? in
+            let values: URLResourceValues
+            do {
+                values = try url.resourceValues(forKeys: keys)
+            } catch let error as CocoaError where [.fileReadNoSuchFile, .fileNoSuchFile].contains(error.code) {
+                return nil
+            } catch let error as POSIXError where error.code == .ENOENT {
+                return nil
+            }
             var existsAsDirectory: ObjCBool = false
             _ = FileManager.default.fileExists(atPath: url.path, isDirectory: &existsAsDirectory)
             let isDirectory = values.isDirectory == true || existsAsDirectory.boolValue

@@ -139,12 +139,14 @@ final class SmartCollectionView: NSCollectionView {
 
 final class SmartTableView: NSTableView {
     weak var keyDelegate: SmartCollectionViewKeyDelegate?
+    var onInteraction: ((SmartTableView) -> Void)?
 
     override var acceptsFirstResponder: Bool {
         true
     }
 
     override func keyDown(with event: NSEvent) {
+        onInteraction?(self)
         if let shortcut = FinderKeyboardShortcut.resolve(event: event) {
             keyDelegate?.smartCollectionViewDidPressShortcut(shortcut)
             return
@@ -153,6 +155,7 @@ final class SmartTableView: NSTableView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        onInteraction?(self)
         let preservedSelection = selectionToPreserveForDrag(event)
         let inlineRenameRow = inlineRenameCandidateRow(for: event)
         super.mouseDown(with: event)
@@ -267,7 +270,6 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     var onSelectionChange: (([FileItem]) -> Void)?
     var onKeyboardShortcut: ((FinderKeyboardShortcut) -> Bool)?
 
-    private let directoryStore = DirectoryStore()
     private let fileOperations = FileOperations()
     private let fileInfoProvider = FileInfoProvider()
     private let visualIconProvider = VisualIconProvider()
@@ -313,6 +315,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private var columnTables: [SmartTableView] = []
     private var columnRootURL: URL?
     private var columnNavigationToken = UUID()
+    private var columnRebuildTask: Task<Void, Never>?
+    private var columnRefreshRequests: [URL: UUID] = [:]
     private var directoryLoadToken = UUID()
     private var selectionURLsToRestoreAfterLoad: Set<URL> = []
     private var filterText = ""
@@ -324,7 +328,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private var showsFileExtensions = true
     private var showsSelectionCheckboxes = false
     private var suppressColumnSelectionChange = false
-    private var activeColumnIndexForCreation: Int?
+    private var activeColumnIndex: Int?
     private var contextualCreationDirectoryURL: URL?
     private var folderSizeCancellationToken: FolderSizeCancellationToken?
     private var infoWindowControllers: [FileInfoWindowController] = []
@@ -493,7 +497,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     func load(folderURL: URL, selecting selectionURLs: Set<URL> = []) {
         thumbnailPipeline.cancelAll()
         folderItemCountPipeline.cancelAll()
-        columnNavigationToken = UUID()
+        invalidateColumnLoads()
+        activeColumnIndex = nil
+        contextualCreationDirectoryURL = nil
         let requestID = UUID()
         directoryLoadToken = requestID
         selectionURLsToRestoreAfterLoad = Set(selectionURLs.map(\.standardizedFileURL))
@@ -531,8 +537,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                 self.applyCurrentFilter()
                 if self.viewMode == .column {
                     self.rebuildColumnView(for: folderURL)
+                } else {
+                    self.restorePendingSelectionAfterLoad()
                 }
-                self.restorePendingSelectionAfterLoad()
             case .failure(let message):
                 self.selectionURLsToRestoreAfterLoad = []
                 self.allItems = []
@@ -638,8 +645,6 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                 allItems = items
                 updateDisplayedItems()
                 rebuildColumnView(for: folderURL)
-                restorePendingSelectionAfterLoad()
-                updateStatus()
                 return
             }
 
@@ -657,9 +662,12 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             )
 
             if let table {
+                let wasSuppressing = suppressColumnSelectionChange
+                suppressColumnSelectionChange = true
                 updateColumnTableHeight(at: columnIndex)
                 table.reloadData()
                 restoreSelection(in: table, columnIndex: columnIndex, urls: selectedURLs)
+                suppressColumnSelectionChange = wasSuppressing
             }
         }
 
@@ -675,16 +683,18 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func restoreSelection(in table: NSTableView, columnIndex: Int, urls: Set<URL>) {
+        let wasSuppressing = suppressColumnSelectionChange
+        suppressColumnSelectionChange = true
+        defer { suppressColumnSelectionChange = wasSuppressing }
         guard !urls.isEmpty else {
+            table.deselectAll(nil)
             return
         }
         let items = itemsForColumn(at: columnIndex)
         let indexes = items.enumerated().compactMap { index, item in
             urls.contains(item.url) ? index : nil
         }
-        suppressColumnSelectionChange = true
         table.selectRowIndexes(IndexSet(indexes), byExtendingSelection: false)
-        suppressColumnSelectionChange = false
     }
 
     func setColumnRootURL(_ url: URL?) {
@@ -720,6 +730,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     private func applySortChange() {
         let selection = Set(selectedItems().map(\.url))
+        let columnSelections = columnTables.enumerated().map { index, table in
+            selectedURLsInColumn(table, columnIndex: index)
+        }
         updateDisplayedItems()
         if viewMode == .column {
             columnFolders = columnFolders.map { folder in
@@ -728,7 +741,9 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
         reloadViews()
         if viewMode == .column {
-            selectColumnItems(matching: selection.union(columnFolders.compactMap(\.selectedURL)))
+            for (index, table) in columnTables.enumerated() {
+                restoreSelection(in: table, columnIndex: index, urls: columnSelections[index])
+            }
         } else {
             select(urls: selection)
         }
@@ -751,7 +766,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
         viewMode = mode
         if mode != .column {
-            activeColumnIndexForCreation = nil
+            activeColumnIndex = nil
             contextualCreationDirectoryURL = nil
         }
         if isLeavingColumnView {
@@ -761,10 +776,11 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         tableScrollView.isHidden = mode != .list
         columnScrollView.isHidden = mode != .column
         if mode == .column, let currentFolderURL {
-            rebuildColumnView(for: currentFolderURL)
+            rebuildColumnView(for: currentFolderURL, restoringSelection: selectedURLSet)
+        } else {
+            reloadViews()
+            select(urls: selectedURLSet)
         }
-        reloadViews()
-        select(urls: selectedURLSet)
         view.window?.makeFirstResponder(firstResponderForCurrentViewMode())
         updateStatus()
     }
@@ -1293,14 +1309,16 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         case .list:
             tableView.selectRowIndexes(IndexSet(integersIn: 0..<displayedItems.count), byExtendingSelection: false)
         case .column:
-            guard let lastTable = columnTables.last,
-                  let columnIndex = columnIndex(for: lastTable) else {
+            guard let columnIndex = operationColumnIndex() else {
                 break
             }
-            lastTable.selectRowIndexes(
+            let table = columnTables[columnIndex]
+            suppressColumnSelectionChange = true
+            table.selectRowIndexes(
                 IndexSet(integersIn: 0..<itemsForColumn(at: columnIndex).count),
                 byExtendingSelection: false
             )
+            suppressColumnSelectionChange = false
         }
         updateStatus()
     }
@@ -1345,7 +1363,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         switch viewMode {
         case .icon:
             contextualCreationDirectoryURL = nil
-            activeColumnIndexForCreation = nil
+            activeColumnIndex = nil
             let point = collectionView.convert(event.locationInWindow, from: nil)
             if let indexPath = collectionView.indexPathForItem(at: point),
                !collectionView.selectionIndexPaths.contains(indexPath) {
@@ -1356,7 +1374,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             contextMenu().popUp(positioning: nil, at: point, in: collectionView)
         case .list:
             contextualCreationDirectoryURL = nil
-            activeColumnIndexForCreation = nil
+            activeColumnIndex = nil
             let point = tableView.convert(event.locationInWindow, from: nil)
             let row = tableView.row(at: point)
             if row >= 0, !tableView.selectedRowIndexes.contains(row) {
@@ -1369,15 +1387,20 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             guard let target = columnTable(atWindowPoint: event.locationInWindow) else {
                 return
             }
-            activeColumnIndexForCreation = columnIndex(for: target)
+            activeColumnIndex = columnIndex(for: target)
             contextualCreationDirectoryURL = activeColumnDirectoryURL()
+            view.window?.makeFirstResponder(target)
 
             let point = target.convert(event.locationInWindow, from: nil)
             let row = target.row(at: point)
-            if row >= 0, !target.selectedRowIndexes.contains(row) {
+            suppressColumnSelectionChange = true
+            if row < 0 {
+                target.deselectAll(nil)
+            } else if !target.selectedRowIndexes.contains(row) {
                 target.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
-                updateStatus()
             }
+            suppressColumnSelectionChange = false
+            updateStatus()
 
             contextMenu().popUp(positioning: nil, at: point, in: target)
         }
@@ -1647,11 +1670,11 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     private func activeColumnDirectoryURL() -> URL? {
         guard viewMode == .column,
-              let activeColumnIndexForCreation,
-              columnFolders.indices.contains(activeColumnIndexForCreation) else {
+              let activeColumnIndex,
+              columnFolders.indices.contains(activeColumnIndex) else {
             return nil
         }
-        return columnFolders[activeColumnIndexForCreation].url
+        return columnFolders[activeColumnIndex].url
     }
 
     private func refreshAfterCreatingItem(in directoryURL: URL) {
@@ -1706,46 +1729,72 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func refreshAffectedColumnFolders(_ affectedDirectories: [URL]) {
-        let affectedPaths = Set(affectedDirectories.map { $0.standardizedFileURL.path })
-        guard !affectedPaths.isEmpty else {
-            return
+        let affectedURLs = Set(affectedDirectories.map(\.standardizedFileURL))
+        let directories = columnFolders.map { $0.url.standardizedFileURL }.filter {
+            affectedURLs.contains($0)
+        }
+        guard !directories.isEmpty else { return }
+
+        let requestID = UUID()
+        for url in directories {
+            columnRefreshRequests[url] = requestID
         }
 
+        let navigationID = columnNavigationToken
+        let focusedLoadID = directoryLoadToken
         let options = DirectoryLoadOptions(includesHiddenItems: includesHiddenItems)
-        var reloadedIndexes: [Int] = []
+        Task.detached(priority: .utility) { [weak self] in
+            let items = Self.readColumnDirectories(directories, options: options)
+            await self?.applyRefreshedColumns(
+                directories, items: items, requestID: requestID,
+                navigationID: navigationID, focusedLoadID: focusedLoadID
+            )
+        }
+    }
 
-        for index in columnFolders.indices {
+    private func applyRefreshedColumns(
+        _ directories: [URL],
+        items: [URL: [FileItem]],
+        requestID: UUID,
+        navigationID: UUID,
+        focusedLoadID: UUID
+    ) {
+        guard viewMode == .column, columnNavigationToken == navigationID else { return }
+        let wasSuppressing = suppressColumnSelectionChange
+        suppressColumnSelectionChange = true
+        defer {
+            suppressColumnSelectionChange = wasSuppressing
+            updateStatus()
+        }
+
+        for url in directories where columnRefreshRequests[url] == requestID {
+            columnRefreshRequests[url] = nil
+            guard let entries = items[url],
+                  let index = columnFolders.firstIndex(where: { $0.url.standardizedFileURL == url }),
+                  columnTables.indices.contains(index) else { continue }
+
+            let table = columnTables[index]
+            let selectedURLs = selectedURLsInColumn(table, columnIndex: index)
             let folder = columnFolders[index]
-            let folderURL = folder.url.standardizedFileURL
-            guard affectedPaths.contains(folderURL.path) else {
-                continue
-            }
-
-            let items = (try? directoryStore.loadItems(in: folder.url, options: options)) ?? []
-            let visibleItems: [FileItem]
-            if folderURL == currentFolderURL?.standardizedFileURL {
-                allItems = items
+            let sortedEntries: [FileItem]
+            if url == currentFolderURL?.standardizedFileURL {
+                guard directoryLoadToken == focusedLoadID else { continue }
+                allItems = entries
                 updateDisplayedItems()
-                visibleItems = displayedItems
+                sortedEntries = displayedItems
             } else {
-                visibleItems = sortedItems(items)
+                sortedEntries = sortedItems(entries)
             }
 
             columnFolders[index] = ColumnFolder(
                 url: folder.url,
-                items: visibleItems,
+                items: sortedEntries,
                 selectedURL: folder.selectedURL
             )
-            reloadedIndexes.append(index)
-        }
-
-        for index in reloadedIndexes where columnTables.indices.contains(index) {
             updateColumnTableHeight(at: index)
-            columnTables[index].reloadData()
+            table.reloadData()
+            restoreSelection(in: table, columnIndex: index, urls: selectedURLs)
         }
-
-        selectColumnPathRows()
-        updateStatus()
     }
 
     private func refreshItemMetadata(for urls: [URL]) {
@@ -2021,16 +2070,17 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
 
     func compressSelection() {
         let urls = selectedItems().map(\.url)
-        guard !urls.isEmpty, let currentFolderURL else {
+        guard let first = urls.first else {
             return
         }
+        let sourceDirectory = first.deletingLastPathComponent()
 
         updateStatus(prefix: L10n.string("status.compressing", fallback: "Compressing"))
         Task { [weak self] in
             let result = await Task.detached(priority: .userInitiated) {
                 do {
                     return BackgroundOperationResult.success(
-                        try FileOperations().compress(urls, in: currentFolderURL)
+                        try FileOperations().compress(urls, in: sourceDirectory)
                     )
                 } catch {
                     return BackgroundOperationResult<URL>.failure(error.localizedDescription)
@@ -2041,7 +2091,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             }
             switch result {
             case .success:
-                self.refresh()
+                self.refreshAfterTransfer(affectedDirectories: [sourceDirectory])
             case .failure(let message):
                 self.showOperationError(FileOperationExecutionError(message: message))
                 self.updateStatus()
@@ -2415,26 +2465,22 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                     return displayedItems[row]
                 }
         case .column:
-            for table in columnTables.reversed() {
-                guard let columnIndex = columnIndex(for: table),
-                      !table.selectedRowIndexes.isEmpty else {
-                    continue
-                }
-                let items = itemsForColumn(at: columnIndex)
-                let selectedItems = table.selectedRowIndexes
-                    .sorted()
-                    .compactMap { row -> FileItem? in
-                        guard items.indices.contains(row) else {
-                            return nil
-                        }
-                        return items[row]
-                    }
-                if !selectedItems.isEmpty {
-                    return selectedItems
-                }
+            guard let columnIndex = operationColumnIndex() else {
+                return []
             }
-            return []
+            let items = itemsForColumn(at: columnIndex)
+            return columnTables[columnIndex].selectedRowIndexes.compactMap { row in
+                items.indices.contains(row) ? items[row] : nil
+            }
         }
+    }
+
+    private func operationColumnIndex() -> Int? {
+        guard !columnTables.isEmpty else { return nil }
+        if let activeColumnIndex, columnTables.indices.contains(activeColumnIndex) {
+            return activeColumnIndex
+        }
+        return columnTables.indices.last
     }
 
     private func item(in tableView: NSTableView, row: Int) -> FileItem? {
@@ -2546,24 +2592,77 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
         }
     }
 
-    private func rebuildColumnView(for focusedFolderURL: URL) {
+    private func rebuildColumnView(for focusedFolderURL: URL, restoringSelection selection: Set<URL> = []) {
+        invalidateColumnLoads()
+        let requestID = columnNavigationToken
+        let focusedURL = focusedFolderURL.standardizedFileURL
         let options = DirectoryLoadOptions(includesHiddenItems: includesHiddenItems)
-        let columns = ColumnViewPath.columns(for: focusedFolderURL, rootURL: columnRootURL)
+        let columns = ColumnViewPath.columns(for: focusedURL, rootURL: columnRootURL)
+        let parentURLs = columns.map { $0.folderURL.standardizedFileURL }.filter { $0 != focusedURL }
+        columnRebuildTask = Task.detached(priority: .userInitiated) { [weak self] in
+            let parentItems = Self.readColumnDirectories(parentURLs, options: options)
+            guard !Task.isCancelled else { return }
+            await self?.applyRebuiltColumns(
+                columns, parentItems: parentItems, focusedURL: focusedURL,
+                requestID: requestID, restoringSelection: selection
+            )
+        }
+    }
+
+    private nonisolated static func readColumnDirectories(
+        _ urls: [URL], options: DirectoryLoadOptions
+    ) -> [URL: [FileItem]] {
+        let store = DirectoryStore()
+        var items: [URL: [FileItem]] = [:]
+        for url in urls {
+            guard !Task.isCancelled else { break }
+            items[url] = try? store.loadItems(in: url, options: options)
+        }
+        return items
+    }
+
+    private func applyRebuiltColumns(
+        _ columns: [ColumnViewColumn],
+        parentItems: [URL: [FileItem]],
+        focusedURL: URL,
+        requestID: UUID,
+        restoringSelection selection: Set<URL>
+    ) {
+        guard viewMode == .column,
+              LatestRequestPolicy.shouldApply(
+                  requestID: requestID, currentRequestID: columnNavigationToken,
+                  requestedURL: focusedURL, currentURL: currentFolderURL
+              ) else { return }
+        columnRebuildTask = nil
+        let window = view.window
+        let responder = window?.firstResponder
+        let shouldFocusColumn = responder === columnScrollView || responder === collectionView ||
+            responder === tableView || responder === window
+        activeColumnIndex = nil
         columnFolders = columns.map { column in
-            let items: [FileItem]
-            if column.folderURL.standardizedFileURL == focusedFolderURL.standardizedFileURL {
-                items = allItems
-            } else {
-                items = (try? directoryStore.loadItems(in: column.folderURL, options: options)) ?? []
-            }
+            let url = column.folderURL.standardizedFileURL
+            let items = url == focusedURL ? displayedItems : sortedItems(parentItems[url] ?? [])
 
             return ColumnFolder(
                 url: column.folderURL,
-                items: sortedItems(items),
+                items: items,
                 selectedURL: column.selectedURL
             )
         }
         rebuildColumnTables()
+        if shouldFocusColumn, let table = columnTables.last {
+            window?.makeFirstResponder(table)
+        }
+        restoreSelectionAfterLoad(selection)
+        restorePendingSelectionAfterLoad()
+        updateStatus()
+    }
+
+    private func invalidateColumnLoads() {
+        columnNavigationToken = UUID()
+        columnRebuildTask?.cancel()
+        columnRebuildTask = nil
+        columnRefreshRequests.removeAll()
     }
 
     private func rebuildColumnTables() {
@@ -2613,6 +2712,13 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             table.dataSource = self
             table.delegate = self
             table.keyDelegate = self
+            table.onInteraction = { [weak self] table in
+                guard let self, let index = self.columnIndex(for: table) else { return }
+                self.contextualCreationDirectoryURL = nil
+                guard self.activeColumnIndex != index else { return }
+                self.activeColumnIndex = index
+                self.updateStatus()
+            }
             table.headerView = nil
             table.allowsMultipleSelection = true
             table.usesAlternatingRowBackgroundColors = false
@@ -2639,7 +2745,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func clearColumnView() {
-        columnNavigationToken = UUID()
+        invalidateColumnLoads()
         for table in columnTables {
             table.dataSource = nil
             table.delegate = nil
@@ -2697,7 +2803,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     }
 
     private func handleColumnSelection(in table: NSTableView, columnIndex: Int) {
-        activeColumnIndexForCreation = columnIndex
+        activeColumnIndex = columnIndex
         contextualCreationDirectoryURL = nil
 
         guard table.selectedRowIndexes.count == 1 else {
@@ -2730,8 +2836,8 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
             return
         }
 
-        let token = UUID()
-        columnNavigationToken = token
+        invalidateColumnLoads()
+        let token = columnNavigationToken
         directoryLoadToken = UUID()
         currentFolderURL = folderURL
         startMonitoringDirectory(folderURL)
@@ -3017,7 +3123,10 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
     private func reloadViews() {
         collectionView.reloadData()
         tableView.reloadData()
+        let wasSuppressing = suppressColumnSelectionChange
+        suppressColumnSelectionChange = true
         columnTables.forEach { $0.reloadData() }
+        suppressColumnSelectionChange = wasSuppressing
     }
 
     private func select(urls: Set<URL>) {
@@ -3073,6 +3182,7 @@ final class FileGridViewController: NSViewController, NSCollectionViewDataSource
                 suppressColumnSelectionChange = true
                 table.selectRowIndexes(IndexSet(indexes), byExtendingSelection: false)
                 suppressColumnSelectionChange = false
+                activeColumnIndex = columnIndex
                 table.scrollRowToVisible(indexes[0])
                 view.window?.makeFirstResponder(table)
                 break
